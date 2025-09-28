@@ -32,9 +32,9 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron:start": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
-    "electron:package": "react-scripts build && electron-builder -w",
     "electron:build": "npm run build && electron-builder",
-    "package:all": "npm run build && electron-builder -wm"
+    "package:win": "npm run build && electron-builder --win",
+    "package:mac": "npm run build && electron-builder --mac"
   },
   "eslintConfig": {
     "extends": [
