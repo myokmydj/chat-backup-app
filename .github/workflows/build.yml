@@ -1,0 +1,40 @@
+# .github/workflows/build.yml
+
+name: Build Electron App
+
+on:
+  push:
+    branches: [ main ] # main 브랜치에 코드가 푸시될 때마다 실행
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }} # Windows, macOS, Linux에서 각각 실행
+
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest] # 빌드할 운영체제 목록
+
+    steps:
+      - name: Check out git repository
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # 프로젝트에 맞는 Node.js 버전
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build and Package
+        run: npm run package:all # package:all 스크립트를 실행
+        env:
+          # GitHub Actions에서 electron-builder가 인증 문제를 일으키지 않도록 설정
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-build
+          path: dist
