@@ -1,4 +1,4 @@
-// File: src/App.js (수정 완료)
+// File: src/App.js
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Dashboard from './components/Dashboard';
@@ -86,7 +86,8 @@ function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [globalTheme, setGlobalTheme] = useState(() => getInitialState('chat-app-global-theme', DEFAULT_GLOBAL_THEME));
   const [selectedFont, setSelectedFont] = useState(() => getInitialState('chat-backup-font', WEB_FONTS[0].value));
-  const [availableFonts] = useState({ web: WEB_FONTS, system: [] });
+  // --- ▼▼▼ [수정] setAvailableFonts를 사용하도록 변경 ▼▼▼ ---
+  const [availableFonts, setAvailableFonts] = useState({ web: WEB_FONTS, system: [] });
   const [editingConvo, setEditingConvo] = useState(null);
   const [fontSize, setFontSize] = useState(() => getInitialState('chat-backup-font-size', 15));
   const [letterSpacing, setLetterSpacing] = useState(() => getInitialState('chat-backup-letter-spacing', 0));
@@ -98,10 +99,32 @@ function App() {
 
   useEffect(() => { if(Array.isArray(characterPairs)) { localStorage.setItem('pair-chat-data', JSON.stringify(characterPairs)); } }, [characterPairs]);
   useEffect(() => { localStorage.setItem('chat-app-global-theme', JSON.stringify(globalTheme)); }, [globalTheme]);
-  useEffect(() => { localStorage.setItem('chat-backup-font', JSON.stringify(selectedFont)); }, [selectedFont]);
+  
+  // --- ▼▼▼ [수정] 폰트 변경 시 localStorage 저장과 CSS 변수 적용을 함께 처리 ▼▼▼ ---
+  useEffect(() => {
+    localStorage.setItem('chat-backup-font', JSON.stringify(selectedFont));
+    document.documentElement.style.setProperty('--global-font-family', selectedFont);
+  }, [selectedFont]);
+
   useEffect(() => { localStorage.setItem('chat-backup-font-size', fontSize); document.documentElement.style.setProperty('--global-font-size', `${fontSize}px`); }, [fontSize]);
   useEffect(() => { localStorage.setItem('chat-backup-letter-spacing', letterSpacing); document.documentElement.style.setProperty('--global-letter-spacing', `${letterSpacing}px`); }, [letterSpacing]);
   useEffect(() => { document.documentElement.style.setProperty('--global-accent-color', globalTheme.titleBarBg || '#FFFFFF'); }, [globalTheme.titleBarBg]);
+
+  // --- ▼▼▼ [신규] 앱 시작 시 시스템 폰트 목록을 불러오는 useEffect ▼▼▼ ---
+  useEffect(() => {
+    const loadSystemFonts = async () => {
+      if (window.electronAPI && typeof window.electronAPI.getSystemFonts === 'function') {
+        try {
+          const systemFonts = await window.electronAPI.getSystemFonts();
+          setAvailableFonts(prev => ({ ...prev, system: systemFonts }));
+        } catch (error) {
+          console.error('Failed to load system fonts:', error);
+        }
+      }
+    };
+    loadSystemFonts();
+  }, []);
+
 
   const handleThemeSelectedForNewPair = useCallback((selectedTheme) => {
     if (!newPairDataBuffer) return;
@@ -229,7 +252,6 @@ function App() {
   const handleUpdateConversation = useCallback((convoId, updatedData) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).map(c => c.id !== convoId ? c : { ...c, ...updatedData }); return { ...p, conversations: updatedConversations }; })); setEditingConvo(null); }, [selectedPairId]);
   const handleDeleteConversation = useCallback((convoId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).filter(c => c.id !== convoId); return { ...p, conversations: updatedConversations }; })); }, [selectedPairId]);
   
-  // ▼▼▼ [수정] handleEditMessage가 content, sender, characterVersionId를 포함하는 객체를 받도록 변경 ▼▼▼
   const handleEditMessage = useCallback((convoId, messageId, updatedData) => {
     setCharacterPairs(pairs => pairs.map(pair => {
       if (pair.id !== selectedPairId) return pair;
@@ -248,14 +270,13 @@ function App() {
     }));
   }, [selectedPairId]);
 
-  // ▼▼▼ [수정] handleAddMessageInBetween이 characterVersionId를 포함하도록 변경 ▼▼▼
   const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => {
     const newMessage = {
       id: Date.now(),
       type: 'text',
       content: messageData.text,
       sender: messageData.sender,
-      characterVersionId: messageData.characterVersionId, // ID 추가
+      characterVersionId: messageData.characterVersionId,
     };
     setCharacterPairs(pairs => pairs.map(pair => {
       if (pair.id !== selectedPairId) return pair;
