@@ -1,8 +1,8 @@
-// 파일: src/components/SettingsPanel.js (수정 완료)
+// 파일: src/components/SettingsPanel.js
 
 import React from 'react';
 import ThemeEditor from './ThemeEditor';
-import CustomSlider from './CustomSlider'; // ▼▼▼ CustomSlider import
+import CustomSlider from './CustomSlider';
 
 const globalThemeOptions = [
   { key: 'titleBarBg', label: '상단 타이틀 바 색상', group: 'colors' },
@@ -18,10 +18,26 @@ const SettingsPanel = ({
   fontSize,
   onFontSizeChange,
   letterSpacing,
-  onLetterSpacingChange
+  onLetterSpacingChange,
+  // ▼▼▼ [추가] 타이틀 바 관련 props 수신 ▼▼▼
+  titleBarText,
+  onTitleBarTextChange,
 }) => {
   return (
     <div className="settings-panel">
+      {/* ▼▼▼ [추가] 전역 UI 설정 섹션 ▼▼▼ */}
+      <div className="settings-section">
+        <h3 className="settings-title">전역 UI 설정</h3>
+        <label htmlFor="title-bar-text-input">타이틀 바 텍스트</label>
+        <input
+          id="title-bar-text-input"
+          type="text"
+          value={titleBarText}
+          onChange={(e) => onTitleBarTextChange(e.target.value)}
+          className="settings-input"
+        />
+      </div>
+
       <div className="settings-section">
         <h3 className="settings-title">폰트 설정</h3>
         <label htmlFor="font-select">에디터 폰트</label>
@@ -46,7 +62,6 @@ const SettingsPanel = ({
         <div className="font-control-group">
           <label htmlFor="font-size-slider">폰트 크기</label>
           <div className="slider-container">
-            {/* ▼▼▼ input을 CustomSlider로 교체 ▼▼▼ */}
             <CustomSlider
               id="font-size-slider"
               min="12" max="20" step="0.5"

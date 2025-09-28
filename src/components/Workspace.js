@@ -14,6 +14,7 @@ import RichTextEditModal from './RichTextEditModal';
 import ProfilePopover from './ProfilePopover';
 import BookmarkPanel from './BookmarkPanel';
 import TextStickerModal from './TextStickerModal';
+import DataImportModal from './DataImportModal';
 import { db } from '../db';
 import ColorThief from 'colorthief';
 import { generateThemesFromPalette } from '../themeUtils';
@@ -65,7 +66,13 @@ const Workspace = ({
   pairData, onAddMessage, onGoToDashboard, onAddConversation, onUpdateTheme,
   onUpdateBackgroundImage, onAddSlideImage, onDeleteSlideImage, onUpdateCharacters,
   onUpdatePairDetails, onEditConversation, onDeleteConversation, onEditMessage,
-  onAddMessageInBetween, onDeleteMessage, onUpdateStickers, onToggleBookmark
+  onAddMessageInBetween, onDeleteMessage, onUpdateStickers, onToggleBookmark,
+  onImportMessages,
+  availableFonts,
+  onAddOrUpdateTextSticker,
+  onUpdateStickerOrder,
+  // ▼▼▼ [신규] 스티커 삭제 핸들러 수신 ▼▼▼
+  onDeleteSticker,
 }) => {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
@@ -90,6 +97,9 @@ const Workspace = ({
   const [scrollToMessageId, setScrollToMessageId] = useState(null);
   
   const [isTextStickerModalOpen, setIsTextStickerModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  
+  const [editingSticker, setEditingSticker] = useState(null);
 
   const stickerInputRef = useRef(null);
 
@@ -145,7 +155,7 @@ const Workspace = ({
     setIsBookmarkPanelOpen(false);
   };
 
-  const addNewStickerToConversation = async (imageBlob, isTextSticker = false) => {
+  const addNewStickerToConversation = async (imageBlob) => {
     if (!selectedConversationId) return;
     try {
       const imageId = await db.images.add({ data: imageBlob });
@@ -153,7 +163,7 @@ const Workspace = ({
         id: `sticker_${Date.now()}`, 
         imageId: imageId, 
         x: 100, y: 100, width: 150, rotate: 0,
-        isTextSticker: isTextSticker,
+        isTextSticker: false,
         effects: {
           border: { enabled: false, color: '#FFFFFF', width: 2 },
           shadow: { enabled: false, color: '#000000', blur: 5, offsetX: 2, offsetY: 2 },
@@ -174,14 +184,26 @@ const Workspace = ({
   const handleStickerFileSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      await addNewStickerToConversation(file, false);
+      await addNewStickerToConversation(file);
     }
     e.target.value = null;
   };
 
-  const handleAddTextSticker = async (stickerBlob) => {
-    await addNewStickerToConversation(stickerBlob, true);
+  const handleTextStickerComplete = (stickerData, blob) => {
+    if (!selectedConversationId) return;
+    onAddOrUpdateTextSticker(selectedConversationId, stickerData, blob);
+    handleCloseTextStickerModal();
   };
+
+  const handleOpenStickerEditor = (sticker) => {
+    setEditingSticker(sticker);
+    setIsTextStickerModalOpen(true);
+  };
+  
+  const handleCloseTextStickerModal = () => {
+    setIsTextStickerModalOpen(false);
+    setEditingSticker(null);
+  }
 
   const closeDialog = () => setDialogState({ isOpen: false, title: '', fields: [], onConfirm: () => {}, formData: {} });
 
@@ -286,6 +308,36 @@ const Workspace = ({
 
     setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, items: menuItems });
   };
+  
+  // ▼▼▼ [수정] 삭제 메뉴 추가 ▼▼▼
+  const handleStickerContextMenu = (e, sticker) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const menuItems = [
+      { label: '맨 앞으로 가져오기', action: () => onUpdateStickerOrder(selectedConversationId, sticker.id, 'front') },
+      { label: '맨 뒤로 보내기', action: () => onUpdateStickerOrder(selectedConversationId, sticker.id, 'back') },
+    ];
+    
+    if(sticker.isTextSticker) {
+      menuItems.push({ isSeparator: true });
+      menuItems.push({ label: '텍스트 수정', action: () => handleOpenStickerEditor(sticker) });
+    }
+
+    menuItems.push({ isSeparator: true });
+    menuItems.push({ 
+      label: '삭제', 
+      className: 'delete', 
+      action: () => {
+        if (window.confirm('이 스티커를 정말로 삭제하시겠습니까?')) {
+          onDeleteSticker(selectedConversationId, sticker.id);
+        }
+      } 
+    });
+
+    setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, items: menuItems });
+  };
+
 
   useEffect(() => {
     if (!dialogState.isOpen) return;
@@ -335,6 +387,13 @@ const Workspace = ({
   const handleAddNewSlideImage = (imageFile) => { const callback = async (croppedDataUrl) => { try { const imageBlob = await (await fetch(croppedDataUrl)).blob(); const imageId = await db.images.add({ data: imageBlob }); onAddSlideImage(pairData.id, imageId); } catch (error) { console.error("크롭된 배너 이미지 저장 실패:", error); } }; openImageCropper(imageFile, 16 / 9, callback); };
   const handleCropComplete = (croppedDataUrl) => { if (onCropSuccess && typeof onCropSuccess === 'function') { onCropSuccess(croppedDataUrl); } setIsCropperOpen(false); setImageToCrop(null); setOnCropSuccess(null); };
   const handleCloseCropper = () => { setIsCropperOpen(false); setImageToCrop(null); setOnCropSuccess(null); };
+
+  const handleDataImport = (parsedMessages) => {
+    if (parsedMessages && parsedMessages.length > 0 && selectedConversationId) {
+      onImportMessages(selectedConversationId, parsedMessages);
+      setIsImportModalOpen(false);
+    }
+  };
   
   const selectedConversation = (pairData.conversations || []).find(c => c.id === selectedConversationId);
   const bookmarkedMessages = selectedConversation?.messages.filter(m => m.bookmarked) || [];
@@ -373,6 +432,14 @@ const Workspace = ({
           <button className="theme-edit-btn" onClick={() => setIsTextStickerModalOpen(true)} disabled={!selectedConversationId} title="텍스트 스티커 추가"><i className="fas fa-font"></i></button>
           <button 
             className="theme-edit-btn" 
+            onClick={() => setIsImportModalOpen(true)} 
+            disabled={!selectedConversationId} 
+            title="데이터 불러오기"
+          >
+            <i className="fas fa-file-import"></i>
+          </button>
+          <button 
+            className="theme-edit-btn" 
             onClick={() => setIsBookmarkPanelOpen(!isBookmarkPanelOpen)} 
             disabled={!selectedConversationId} 
             title="북마크 목록"
@@ -391,6 +458,8 @@ const Workspace = ({
                 scrollToMessageId={scrollToMessageId}
                 onScrollComplete={() => setScrollToMessageId(null)}
                 onSetComment={handleSetCommentForNewMessage}
+                onStickerContextMenu={handleStickerContextMenu}
+                onOpenStickerEditor={handleOpenStickerEditor}
             /> 
         ) : ( <div className="placeholder">왼쪽에서 대화 로그를 선택하거나 새 로그를 추가하세요.</div> )}
       </div>
@@ -416,10 +485,19 @@ const Workspace = ({
       
       <TextStickerModal
         isOpen={isTextStickerModalOpen}
-        onClose={() => setIsTextStickerModalOpen(false)}
-        onAdd={handleAddTextSticker}
+        onClose={handleCloseTextStickerModal}
+        onComplete={handleTextStickerComplete}
+        availableFonts={availableFonts}
+        editingStickerData={editingSticker}
       />
       
+      <DataImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleDataImport}
+        characters={pairData.characters}
+      />
+
       <SettingsModal isOpen={isThemeModalOpen} onClose={() => setIsThemeModalOpen(false)} title="워크스페이스 테마 편집">
         <ThemeEditor theme={pairData.theme} onThemeChange={(newTheme) => onUpdateTheme(pairData.id, newTheme)} options={workspaceThemeOptions} />
       </SettingsModal>

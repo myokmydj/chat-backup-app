@@ -1,14 +1,17 @@
-// public/preload.js
+// File: public/preload.js
 
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // --- ▼▼▼ Main 프로세스에 폰트 목록을 요청하는 함수 ▼▼▼ ---
-  getSystemFonts: () => ipcRenderer.invoke('get-system-fonts'),
+  // Window controls
+  minimize: () => ipcRenderer.send('minimize-app'),
+  maximize: () => ipcRenderer.send('maximize-app'),
+  close: () => ipcRenderer.send('close-app'),
 
-  // --- ▼▼▼ 창 조절 및 링크 메타데이터 함수들 ▼▼▼ ---
-  minimize: () => ipcRenderer.send('minimize-window'),
-  maximize: () => ipcRenderer.send('maximize-window'),
-  close: () => ipcRenderer.send('close-window'),
-  fetchLinkMetadata: (url) => ipcRenderer.invoke('fetch-link-metadata', url)
+  // Feature APIs
+  getSystemFonts: () => ipcRenderer.invoke('get-system-fonts'),
+  fetchLinkMetadata: (url) => ipcRenderer.invoke('fetch-link-metadata', url),
+  fetchGoogleSheet: (url) => ipcRenderer.invoke('fetch-google-sheet', url),
+  
+  // [제거 완료] 트위터 관련 함수가 삭제되었습니다.
 });

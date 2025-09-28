@@ -85,8 +85,8 @@ function App() {
   const [isAddPairModalOpen, setIsAddPairModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [globalTheme, setGlobalTheme] = useState(() => getInitialState('chat-app-global-theme', DEFAULT_GLOBAL_THEME));
+  const [titleBarText, setTitleBarText] = useState(() => getInitialState('chat-app-title-bar-text', '씹덕의 세계로 오라'));
   const [selectedFont, setSelectedFont] = useState(() => getInitialState('chat-backup-font', WEB_FONTS[0].value));
-  // --- ▼▼▼ [수정] setAvailableFonts를 사용하도록 변경 ▼▼▼ ---
   const [availableFonts, setAvailableFonts] = useState({ web: WEB_FONTS, system: [] });
   const [editingConvo, setEditingConvo] = useState(null);
   const [fontSize, setFontSize] = useState(() => getInitialState('chat-backup-font-size', 15));
@@ -99,18 +99,14 @@ function App() {
 
   useEffect(() => { if(Array.isArray(characterPairs)) { localStorage.setItem('pair-chat-data', JSON.stringify(characterPairs)); } }, [characterPairs]);
   useEffect(() => { localStorage.setItem('chat-app-global-theme', JSON.stringify(globalTheme)); }, [globalTheme]);
-  
-  // --- ▼▼▼ [수정] 폰트 변경 시 localStorage 저장과 CSS 변수 적용을 함께 처리 ▼▼▼ ---
+  useEffect(() => { localStorage.setItem('chat-app-title-bar-text', JSON.stringify(titleBarText)); }, [titleBarText]);
   useEffect(() => {
     localStorage.setItem('chat-backup-font', JSON.stringify(selectedFont));
     document.documentElement.style.setProperty('--global-font-family', selectedFont);
   }, [selectedFont]);
-
   useEffect(() => { localStorage.setItem('chat-backup-font-size', fontSize); document.documentElement.style.setProperty('--global-font-size', `${fontSize}px`); }, [fontSize]);
   useEffect(() => { localStorage.setItem('chat-backup-letter-spacing', letterSpacing); document.documentElement.style.setProperty('--global-letter-spacing', `${letterSpacing}px`); }, [letterSpacing]);
   useEffect(() => { document.documentElement.style.setProperty('--global-accent-color', globalTheme.titleBarBg || '#FFFFFF'); }, [globalTheme.titleBarBg]);
-
-  // --- ▼▼▼ [신규] 앱 시작 시 시스템 폰트 목록을 불러오는 useEffect ▼▼▼ ---
   useEffect(() => {
     const loadSystemFonts = async () => {
       if (window.electronAPI && typeof window.electronAPI.getSystemFonts === 'function') {
@@ -124,7 +120,6 @@ function App() {
     };
     loadSystemFonts();
   }, []);
-
 
   const handleThemeSelectedForNewPair = useCallback((selectedTheme) => {
     if (!newPairDataBuffer) return;
@@ -216,6 +211,24 @@ function App() {
     }));
   }, [selectedPairId]);
 
+  const handleImportMessages = useCallback((convoId, newMessages) => {
+    setCharacterPairs(pairs => pairs.map(pair => {
+      if (pair.id !== selectedPairId) return pair;
+      return {
+        ...pair,
+        conversations: (pair.conversations || []).map(convo => {
+          if (convo.id !== convoId) return convo;
+          const existingMessages = convo.messages || [];
+          const messagesWithIds = newMessages.map((msg, index) => ({
+            ...msg,
+            id: Date.now() + index,
+          }));
+          return { ...convo, messages: [...existingMessages, ...messagesWithIds] };
+        })
+      };
+    }));
+  }, [selectedPairId]);
+
   const handleToggleBookmark = useCallback((convoId, messageId) => {
     setCharacterPairs(pairs => pairs.map(pair => {
       if (pair.id !== selectedPairId) return pair;
@@ -234,6 +247,79 @@ function App() {
     }));
   }, [selectedPairId]);
 
+  const handleAddOrUpdateTextSticker = useCallback(async (convoId, stickerData, blob) => {
+    try {
+      const imageId = await db.images.add({ data: blob });
+      const finalStickerData = { ...stickerData, imageId };
+
+      setCharacterPairs(pairs => pairs.map(pair => {
+        if (pair.id !== selectedPairId) return pair;
+        return {
+          ...pair,
+          conversations: pair.conversations.map(convo => {
+            if (convo.id !== convoId) return convo;
+            
+            const currentStickers = convo.stickers || [];
+            const isUpdate = currentStickers.some(s => s.id === finalStickerData.id);
+            
+            let updatedStickers;
+            if (isUpdate) {
+              updatedStickers = currentStickers.map(s => s.id === finalStickerData.id ? finalStickerData : s);
+            } else {
+              updatedStickers = [...currentStickers, finalStickerData];
+            }
+            return { ...convo, stickers: updatedStickers };
+          })
+        };
+      }));
+    } catch (error) {
+      console.error("텍스트 스티커 저장 실패:", error);
+      alert("텍스트 스티커를 저장하는 데 실패했습니다.");
+    }
+  }, [selectedPairId]);
+  
+  const handleUpdateStickerOrder = useCallback((convoId, stickerId, direction) => {
+    setCharacterPairs(pairs => pairs.map(pair => {
+      if (pair.id !== selectedPairId) return pair;
+      return {
+        ...pair,
+        conversations: pair.conversations.map(convo => {
+          if (convo.id !== convoId) return convo;
+
+          const stickers = [...(convo.stickers || [])];
+          const index = stickers.findIndex(s => s.id === stickerId);
+          if (index === -1) return convo;
+
+          const [sticker] = stickers.splice(index, 1);
+
+          if (direction === 'front') {
+            stickers.push(sticker);
+          } else if (direction === 'back') {
+            stickers.unshift(sticker);
+          }
+
+          return { ...convo, stickers };
+        })
+      };
+    }));
+  }, [selectedPairId]);
+  
+  // ▼▼▼ [신규] 스티커 삭제 핸들러 ▼▼▼
+  const handleDeleteSticker = useCallback((convoId, stickerId) => {
+    setCharacterPairs(pairs => pairs.map(pair => {
+      if (pair.id !== selectedPairId) return pair;
+      return {
+        ...pair,
+        conversations: pair.conversations.map(convo => {
+          if (convo.id !== convoId) return convo;
+          const updatedStickers = (convo.stickers || []).filter(s => s.id !== stickerId);
+          return { ...convo, stickers: updatedStickers };
+        })
+      };
+    }));
+  }, [selectedPairId]);
+  
+  const handleUpdateTitleBarText = useCallback((newText) => { setTitleBarText(newText); }, []);
   const handleDashboardContextMenu = (e, pairId) => { e.preventDefault(); setDashboardContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, pairId }); };
   const closeDashboardContextMenu = () => setDashboardContextMenu({ ...dashboardContextMenu, isOpen: false });
   const handleDeletePair = useCallback((pairIdToDelete) => { if (window.confirm("정말로 이 대화 로그 전체를 삭제하시겠습니까? 모든 내용이 영구적으로 사라집니다.")) { setCharacterPairs(pairs => pairs.filter(p => p.id !== pairIdToDelete)); } }, []);
@@ -251,50 +337,8 @@ function App() {
   const handleOpenConvoSettingsModal = useCallback((convoId) => { const pair = (Array.isArray(characterPairs) ? characterPairs : []).find(p => p.id === selectedPairId); const convo = (pair?.conversations || []).find(c => c.id === convoId); if (convo) setEditingConvo(convo); }, [characterPairs, selectedPairId]);
   const handleUpdateConversation = useCallback((convoId, updatedData) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).map(c => c.id !== convoId ? c : { ...c, ...updatedData }); return { ...p, conversations: updatedConversations }; })); setEditingConvo(null); }, [selectedPairId]);
   const handleDeleteConversation = useCallback((convoId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).filter(c => c.id !== convoId); return { ...p, conversations: updatedConversations }; })); }, [selectedPairId]);
-  
-  const handleEditMessage = useCallback((convoId, messageId, updatedData) => {
-    setCharacterPairs(pairs => pairs.map(pair => {
-      if (pair.id !== selectedPairId) return pair;
-      return {
-        ...pair,
-        conversations: pair.conversations.map(convo => {
-          if (convo.id !== convoId) return convo;
-          return {
-            ...convo,
-            messages: convo.messages.map(msg => 
-              msg.id === messageId ? { ...msg, ...updatedData } : msg
-            )
-          };
-        })
-      };
-    }));
-  }, [selectedPairId]);
-
-  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => {
-    const newMessage = {
-      id: Date.now(),
-      type: 'text',
-      content: messageData.text,
-      sender: messageData.sender,
-      characterVersionId: messageData.characterVersionId,
-    };
-    setCharacterPairs(pairs => pairs.map(pair => {
-      if (pair.id !== selectedPairId) return pair;
-      return {
-        ...pair,
-        conversations: pair.conversations.map(convo => {
-          if (convo.id !== convoId) return convo;
-          const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId);
-          if (targetIndex === -1) return convo;
-          const newMessages = [...convo.messages];
-          const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
-          newMessages.splice(insertIndex, 0, newMessage);
-          return { ...convo, messages: newMessages };
-        })
-      };
-    }));
-  }, [selectedPairId]);
-
+  const handleEditMessage = useCallback((convoId, messageId, updatedData) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.map(msg => msg.id === messageId ? { ...msg, ...updatedData } : msg) }; }) }; })); }, [selectedPairId]);
+  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => { const newMessage = { id: Date.now(), type: 'text', content: messageData.text, sender: messageData.sender, characterVersionId: messageData.characterVersionId, }; setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId); if (targetIndex === -1) return convo; const newMessages = [...convo.messages]; const insertIndex = position === 'before' ? targetIndex : targetIndex + 1; newMessages.splice(insertIndex, 0, newMessage); return { ...convo, messages: newMessages }; }) }; })); }, [selectedPairId]);
   const handleDeleteMessage = useCallback((convoId, messageId) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.filter(msg => msg.id !== messageId) }; }) }; })); }, [selectedPairId]);
   const handleUpdateStickers = useCallback((convoId, newStickers) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, stickers: newStickers }; }) }; })); }, [selectedPairId]);
   
@@ -303,19 +347,40 @@ function App() {
 
   return (
     <>
-      <TitleBar bgColor={globalTheme.titleBarBg} onOpenSettings={() => setIsSettingsModalOpen(true)} />
+      <TitleBar 
+        bgColor={globalTheme.titleBarBg} 
+        onOpenSettings={() => setIsSettingsModalOpen(true)} 
+        titleText={titleBarText}
+      />
       <div className="app-container-root" style={{ paddingTop: '32px' }}>
         {currentView === 'dashboard' ? (
           <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(true)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} />
         ) : (
           selectedPair && (
             <Workspace
-              pairData={selectedPair} onGoToDashboard={handleGoToDashboard} onAddConversation={handleAddConversation} onAddMessage={handleAddMessage}
-              onUpdateBackgroundImage={handleUpdateBackgroundImage} onAddSlideImage={handleAddSlideImage} onDeleteSlideImage={handleDeleteSlideImage}
-              onUpdateCharacters={handleUpdateCharacters} onUpdatePairDetails={handleUpdatePairDetails} onEditConversation={handleOpenConvoSettingsModal}
-              onDeleteConversation={handleDeleteConversation} onUpdateTheme={handleUpdatePairTheme} onEditMessage={handleEditMessage}
-              onAddMessageInBetween={handleAddMessageInBetween} onDeleteMessage={handleDeleteMessage} onUpdateStickers={handleUpdateStickers}
+              pairData={selectedPair} 
+              onGoToDashboard={handleGoToDashboard} 
+              onAddConversation={handleAddConversation} 
+              onAddMessage={handleAddMessage}
+              onUpdateBackgroundImage={handleUpdateBackgroundImage} 
+              onAddSlideImage={handleAddSlideImage} 
+              onDeleteSlideImage={handleDeleteSlideImage}
+              onUpdateCharacters={handleUpdateCharacters} 
+              onUpdatePairDetails={handleUpdatePairDetails} 
+              onEditConversation={handleOpenConvoSettingsModal}
+              onDeleteConversation={handleDeleteConversation} 
+              onUpdateTheme={handleUpdatePairTheme} 
+              onEditMessage={handleEditMessage}
+              onAddMessageInBetween={handleAddMessageInBetween} 
+              onDeleteMessage={handleDeleteMessage} 
+              onUpdateStickers={handleUpdateStickers}
               onToggleBookmark={handleToggleBookmark}
+              onImportMessages={handleImportMessages}
+              availableFonts={availableFonts}
+              onAddOrUpdateTextSticker={handleAddOrUpdateTextSticker}
+              onUpdateStickerOrder={handleUpdateStickerOrder}
+              // ▼▼▼ [신규] 스티커 삭제 핸들러 전달 ▼▼▼
+              onDeleteSticker={handleDeleteSticker}
             />
           )
         )}
@@ -327,9 +392,17 @@ function App() {
         />
         <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="전역 설정">
           <SettingsPanel 
-            availableFonts={availableFonts} selectedFont={selectedFont} onFontChange={(e) => setSelectedFont(e.target.value)} 
-            theme={globalTheme} onThemeChange={handleUpdateGlobalTheme} fontSize={fontSize} onFontSizeChange={(e) => setFontSize(parseFloat(e.target.value))}
-            letterSpacing={letterSpacing} onLetterSpacingChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
+            availableFonts={availableFonts} 
+            selectedFont={selectedFont} 
+            onFontChange={(e) => setSelectedFont(e.target.value)} 
+            theme={globalTheme} 
+            onThemeChange={handleUpdateGlobalTheme} 
+            fontSize={fontSize} 
+            onFontSizeChange={(e) => setFontSize(parseFloat(e.target.value))}
+            letterSpacing={letterSpacing} 
+            onLetterSpacingChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
+            titleBarText={titleBarText}
+            onTitleBarTextChange={handleUpdateTitleBarText}
           />
         </SettingsModal>
         <PairSettingsModal 

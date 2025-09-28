@@ -1,4 +1,4 @@
-/* File: src/App.css (수정 완료) */
+/* File: src/App.css */
 
 /* --- 0. 기본 설정 및 폰트 임포트 --- */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Source+Code+Pro:wght@400;600&display=swap');
@@ -455,6 +455,17 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
 .slider-container input[type="range"] { flex-grow: 1; }
 .slider-container span { font-family: monospace; font-size: 0.85rem; min-width: 50px; text-align: right; }
 .settings-panel select { background-color: #f8f9fa; color: #212529; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 5px; width: 100%; }
+
+/* ▼▼▼ [추가] 설정 패널의 텍스트 입력 필드 스타일 ▼▼▼ */
+.settings-panel .settings-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background-color: #f8f9fa;
+  color: #212529;
+  margin-top: 0.5rem;
+}
 
 /* ▼▼▼ 테마 에디터 탭 UI 스타일 (신규) ▼▼▼ */
 .theme-editor-container {
@@ -1584,13 +1595,14 @@ input[type="range"]:active::-moz-range-thumb {
   transform: scale(1.1);
 }
 
-/* --- 26. 텍스트 스티커 모달 스타일 (신규 추가) --- */
+/* --- 26. 텍스트 스티커 모달 스타일 (신규 추가 & 수정) --- */
 
 .text-sticker-modal-content .form-card {
   padding: 1rem;
 }
 
 .text-sticker-preview {
+  position: relative; /* 자식 요소(mac-dots)의 위치 기준 */
   width: 100%;
   min-height: 150px;
   border-radius: var(--border-radius);
@@ -1602,12 +1614,77 @@ input[type="range"]:active::-moz-range-thumb {
   background-color: #f0f2f5;
   text-align: center;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .text-sticker-preview span {
   max-width: 100%;
   word-break: break-word;
 }
+
+/* ▼▼▼ [신규] 스타일 선택 UI 스타일 ▼▼▼ */
+.sticker-style-selector {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.style-option-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+.style-option-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #adb5bd;
+}
+.style-option-btn.active {
+  background-color: var(--global-accent-color, #5865f2);
+  color: white;
+  border-color: var(--global-accent-color, #5865f2);
+  font-weight: 500;
+}
+/* ▲▲▲ */
+
+/* ▼▼▼ [신규] 프리뷰 스타일 ▼▼▼ */
+.mac-dots-container {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 6px;
+}
+.mac-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.mac-dot.red { background-color: #FF5F56; }
+.mac-dot.yellow { background-color: #FFBD2E; }
+.mac-dot.green { background-color: #27C93F; }
+
+.text-sticker-preview.speech-bubble {
+    position: relative;
+    margin-bottom: 15px; /* 꼬리 공간 확보 */
+}
+.text-sticker-preview.speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border: 15px solid transparent;
+    border-top-color: var(--preview-bg-color, #5865F2);
+    /* JS에서 --preview-bg-color 변수를 동적으로 설정해줘야 합니다. */
+}
+/* ▲▲▲ */
+
 
 .text-sticker-modal-content textarea {
   width: 100%;
@@ -1624,7 +1701,6 @@ input[type="range"]:active::-moz-range-thumb {
   gap: 1rem;
 }
 
-/* ▼▼▼ [수정] 폼 카드 내부를 flexbox로 만들어 컨트롤 간 간격 자동 조절 ▼▼▼ */
 .text-sticker-controls-grid .form-card {
   display: flex;
   flex-direction: column;
@@ -1669,7 +1745,6 @@ input[type="range"]:active::-moz-range-thumb {
   cursor: not-allowed;
 }
 
-/* ▼▼▼ [수정] 색상 패널의 슬라이더에 라벨 추가를 위해 스타일 조정 ▼▼▼ */
 .text-sticker-controls-grid .form-card .slider-container {
   display: flex;
   align-items: center;
@@ -1692,9 +1767,7 @@ input[type="range"]:active::-moz-range-thumb {
   font-size: 0.9rem;
 }
 
-/* Workspace 헤더 아이콘 변경 대응 */
 .workspace-header .theme-edit-btn i.fa-sticky-note {
-  /* 기존 아이콘은 이제 사용되지 않으므로, 필요 시 이 스타일은 제거해도 됩니다. */
 }
 
 /* ▼▼▼ [신규] 메시지 입력창 버전 선택 UI 스타일 ▼▼▼ */
@@ -1753,4 +1826,95 @@ input[type="range"]:active::-moz-range-thumb {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background-color: #fff;
+}
+
+/* --- 27. 데이터 불러오기 모달 스타일 (신규 추가) --- */
+
+.data-import-modal .utility-panel {
+  gap: 0; /* 내부 카드 간격은 카드가 알아서 처리 */
+}
+
+.import-source-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+.import-source-tabs button {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9rem; /* ▼▼▼ [수정] 폰트 크기 살짝 줄임 ▼▼▼ */
+  color: var(--text-muted);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -1px; /* 부모 border와 겹치게 */
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap; /* ▼▼▼ [추가] 줄바꿈 방지 ▼▼▼ */
+}
+
+.import-source-tabs button:hover {
+  color: var(--text-color);
+}
+
+.import-source-tabs button.active {
+  color: var(--global-accent-color, #5865f2);
+  border-bottom-color: var(--global-accent-color, #5865f2);
+  font-weight: 500;
+}
+
+.import-content.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+.import-instruction {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background-color: #f8f9fa;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.import-status {
+  margin-top: 1rem;
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.import-status.error {
+  background-color: #fff5f5;
+  color: #c53030;
+  border: 1px solid #fed7d7;
+}
+
+.workspace-header .fa-file-import {
+  /* 아이콘 스타일은 .theme-edit-btn 클래스가 처리하므로 별도 스타일 불필요 */
+}
+
+/* --- 28. 트위터 화자 할당 모달 스타일 (신규 추가) --- */
+
+.utility-panel select {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #212529;
+}
+
+.utility-panel select:focus {
+  outline: none;
+  border-color: var(--global-accent-color, #5865f2);
+  box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33;
 }

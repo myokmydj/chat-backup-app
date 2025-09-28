@@ -3,8 +3,8 @@
 import React from 'react';
 import './TitleBar.css';
 
-// onOpenSettings prop을 새로 받습니다.
-const TitleBar = ({ bgColor, onOpenSettings }) => {
+// ▼▼▼ [수정] titleText prop을 새로 받습니다. ▼▼▼
+const TitleBar = ({ bgColor, onOpenSettings, titleText }) => {
   const handleMinimize = () => window.electronAPI.minimize();
   const handleMaximize = () => window.electronAPI.maximize();
   const handleClose = () => window.electronAPI.close();
@@ -17,17 +17,15 @@ const TitleBar = ({ bgColor, onOpenSettings }) => {
     <div className="title-bar" style={titleBarStyle}>
       {/* 드래그 영역 */}
       <div className="title-bar-drag-region">
-        <div className="title-text">씹덕의 세계로 오라</div>
+        {/* ▼▼▼ [수정] 하드코딩된 텍스트를 prop으로 대체합니다. ▼▼▼ */}
+        <div className="title-text">{titleText}</div>
       </div>
 
       {/* 아이콘 버튼 영역 */}
       <div className="window-controls">
-        {/* ▼▼▼ 설정 버튼 추가 ▼▼▼ */}
         <button className="window-control-btn settings-btn" title="설정" onClick={onOpenSettings}>
           <i className="fas fa-cog"></i>
         </button>
-
-        {/* 기존 윈도우 조절 버튼 */}
         <button className="window-control-btn" id="minimize-btn" onClick={handleMinimize}>
           <svg x="0px" y="0px" viewBox="0 0 10.2 1"><rect x="0" y="0" width="10.2" height="1"></rect></svg>
         </button>
