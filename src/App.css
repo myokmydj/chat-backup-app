@@ -1,38 +1,1745 @@
-.App {
+/* File: src/App.css (수정 완료) */
+
+/* --- 0. 기본 설정 및 폰트 임포트 --- */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Source+Code+Pro:wght@400;600&display=swap');
+
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-1Thin.woff2') format('woff2');
+    font-weight: 100;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-2ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2');
+    font-weight: 300;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperozi';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-9Black.woff2') format('woff2');
+    font-weight: 900;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-1Thin.woff2') format('woff2');
+    font-weight: 100;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-2ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-3Light.woff2') format('woff2');
+    font-weight: 300;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-4Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-5Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-6SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-7Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-8ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Presentation';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/2404@1.0/Freesentation-9Black.woff2') format('woff2');
+    font-weight: 900;
+    font-display: swap;
+}
+
+/* --- CSS 변수 및 기본 스타일 --- */
+:root {
+  /* 레이아웃 색상 */
+  --app-bg: #f0f2f5;
+  --sidebar-bg: #ffffff;
+  --header-bg: #ffffff;
+  --chat-bg: #ffffff;
+  --footer-bg: #ffffff;
+
+  /* 요소 색상 */
+  --bubble-me-bg: #5865f2;
+  --bubble-other-bg: #e9ecef;
+  --button-bg: #5865f2;
+  --input-bg: #f0f2f5;
+  --sidebar-input-bg: #f0f2f5;
+
+  /* 텍스트 색상 */
+  --text-color: #212529;
+  --text-muted: #868e96;
+  --header-title-color: #212529; /* [신규] 헤더 제목 */
+  --name-me-color: #5865f2;
+  --name-other-color: #868e96;
+
+  /* 기타 */
+  --border-color: #e9ecef; /* [신규] 각종 테두리 */
+  
+  /* UI 디자인 시스템 변수 */
+  --border-radius: 12px;
+  --panel-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* 폰트 관련 변수 */
+  --global-font-family: 'Paperozi', sans-serif;
+  --global-font-size: 15px;
+  --global-letter-spacing: 0px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { font-size: var(--global-font-size); }
+body {
+  margin: 0;
+  background-color: var(--app-bg);
+  color: var(--text-color);
+  font-family: var(--global-font-family);
+  letter-spacing: var(--global-letter-spacing);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color: inherit; }
+
+/* --- 1. 기본 레이아웃 --- */
+.app-container-root {
+  height: calc(100vh - 32px);
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- 2. 대시보드 --- */
+.dashboard { 
+  padding: 24px;
+  overflow-y: auto; 
+  flex-grow: 1; 
+  background-color: var(--dashboardBg);
+}
+.dashboard-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: 24px;
+}
+.conversation-card, .add-log-card {
+  background-color: #fff;
+  border-radius: var(--border-radius);
+  box-shadow: var(--panel-shadow);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 160px;
+  cursor: pointer;
+}
+.conversation-card:hover, .add-log-card:hover {
+  border-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 수정 ▼▼▼ */
+  color: var(--global-accent-color, #5865f2); /* ▼▼▼ 수정 ▼▼▼ */
+  background-color: #fff;
+  box-shadow: var(--panel-shadow);
+}
+.add-log-card { 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  border: 2px dashed var(--border-color);
+  background-color: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 1.5rem; 
+}
+.add-log-card:hover {
+  border-color: var(--button-bg);
+  color: var(--button-bg);
+  background-color: #fff;
+  box-shadow: var(--panel-shadow);
+}
+
+.conversation-card { 
+  position: relative; 
+  overflow: hidden; 
+  background-size: cover; 
+  background-position: center; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: flex-end;
+  padding: 1rem; 
+}
+.conversation-card::before { 
+  content: ''; 
+  position: absolute; 
+  inset: 0; 
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 60%);
+}
+.card-content { position: relative; z-index: 2; color: white; }
+.card-title { font-size: 1.2rem; font-weight: 700; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+.card-tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+.tag-pill { background-color: rgba(255, 255, 255, 0.2); color: #fff; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.75rem; }
+.card-avatars { display: none; }
+
+/* --- 3. 워크스페이스 --- */
+.workspace-container { 
+  display: flex;
+  height: 100%;
+  width: 100%;
+  padding: 16px;
+  gap: 16px;
+  background-color: var(--app-bg, #f0f2f5);
+}
+.conversation-list-container, .main-content-area {
+  border-radius: var(--border-radius);
+  box-shadow: var(--panel-shadow);
+  overflow: hidden;
+}
+
+.main-content-area { 
+  flex-grow: 1; 
+  display: flex; 
+  flex-direction: column; 
+  background-color: var(--chat-bg); 
+}
+.workspace-header { 
+  background-color: var(--header-bg); 
+  padding: 0.5rem 1rem; 
+  display: flex; 
+  align-items: center; 
+  gap: 0.5rem; 
+  flex-shrink: 0; 
+  height: 56px;
+}
+.workspace-header h2 { 
+    margin: 0; 
+    font-size: 1.1rem; 
+    margin-right: auto; 
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--header-title-color); /* [수정] 변수 적용 */
+}
+.theme-edit-btn, .back-button { 
+  background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0.4rem; border-radius: 50%; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: background-color 0.2s, color 0.2s;
+}
+.theme-edit-btn:hover, .back-button:hover { background-color: rgba(0, 0, 0, 0.05); color: var(--text-color); }
+.placeholder { display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted); font-size: 1rem; }
+
+/* --- 4. 사이드바 --- */
+.conversation-list-container { 
+  width: 320px; display: flex; flex-direction: column; background-color: var(--sidebar-bg); color: var(--text-color); flex-shrink: 0; border-right: none;
+}
+
+.conversation-list-slider { width: 100%; aspect-ratio: 16 / 9; position: relative; display: flex; justify-content: center; align-items: center; background-color: #202225; flex-shrink: 0; }
+.slide-image-container { width: 100%; height: 100%; overflow: hidden; cursor: pointer; }
+.slide-image-large { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+.slide-image-container:hover .slide-image-large { transform: scale(1.05); }
+
+/* ▼▼▼ [핵심 수정] 화살표와 컨트롤 버튼 기본 상태 설정 ▼▼▼ */
+.slider-arrow, .slider-controls {
+  position: absolute;
+  z-index: 10;
+  opacity: 0; /* 기본적으로 투명하게 만듦 */
+  pointer-events: none; /* 투명할 때 클릭되지 않도록 설정 */
+  transition: opacity 0.2s ease-in-out; /* 부드러운 효과를 위한 트랜지션 */
+}
+/* ▲▲▲ [핵심 수정] ▲▲▲ */
+
+/* ▼▼▼ [핵심 수정] 슬라이더에 마우스를 올렸을 때 버튼을 보이게 설정 ▼▼▼ */
+.conversation-list-slider:hover .slider-arrow,
+.conversation-list-slider:hover .slider-controls {
+  opacity: 1; /* 마우스를 올리면 불투명하게 만듦 */
+  pointer-events: auto; /* 다시 클릭 가능하도록 설정 */
+}
+/* ▲▲▲ [핵심 수정] ▲▲▲ */
+
+.slider-arrow { top: 50%; transform: translateY(-50%); cursor: pointer; color: white; background-color: rgba(0, 0, 0, 0.4); padding: 0.5rem; border-radius: 50%; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; }
+.slider-arrow.left { left: 10px; }
+.slider-arrow.right { right: 10px; }
+.slider-controls { bottom: 10px; right: 10px; display: flex; gap: 0.5rem; }
+.slider-controls button { background-color: rgba(0, 0, 0, 0.6); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
+.slider-placeholder-large { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #777; cursor: pointer; border: 2px dashed #444; box-sizing: border-box; }
+.slider-placeholder-large i { font-size: 2rem; margin-bottom: 0.5rem; }
+
+
+.conversation-list-header { padding: 1rem; } /* [수정] 변수 적용 */
+.add-conversation-form { display: flex; flex-direction: column; gap: 0.75rem; }
+.add-conversation-form input[type="text"] {
+    border-radius: 8px; background-color: var(--sidebar-input-bg); /* [수정] 변수 적용 */
+    padding: 0.75rem; color: var(--text-color); transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
+}
+.add-conversation-form input[type="text"]::placeholder { color: var(--text-muted); }
+.add-conversation-form input[type="text"]:focus { outline: none; box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33; } /* ▼▼▼ 수정 ▼▼▼ */
+.tag-input-container:focus-within { outline: none; box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33; } /* ▼▼▼ 수정 ▼▼▼ */
+.add-conversation-form > button[type="submit"] {
+  background-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 핵심 수정 ▼▼▼ */
+  color: white; cursor: pointer; font-weight: 500; border: none; border-radius: 8px; padding: 0.75rem; transition: opacity 0.2s;
+}
+.tag-input-container input { border: none; background: none; flex-grow: 1; padding: 0.75rem; }
+.tag-input-container input:focus { outline: none; box-shadow: none; }
+.tag-input-container button { flex-shrink: 0; padding: 0 0.75rem; cursor: pointer; background: none; border: none; color: var(--text-muted); } /* [수정] 변수 적용 */
+.tags-preview { display: flex; flex-wrap: wrap; gap: 0.25rem; min-height: 24px; }
+.tag-item-small { display: flex; align-items: center; gap: 0.25rem; background-color: var(--input-bg); color: var(--text-color); padding: 0.1rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color); } /* [수정] 변수 적용 */
+.tag-item-small button { background: none; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; padding: 0; line-height: 1; height: auto; }
+.add-conversation-form > button[type="submit"] {
+  background-color: var(--button-bg); color: white; cursor: pointer; font-weight: 500; border: none; border-radius: 8px; padding: 0.75rem; transition: opacity 0.2s;
+}
+.add-conversation-form > button[type="submit"]:hover { opacity: 0.9; }
+
+.conversation-list { list-style-type: none; padding: 0.5rem; margin: 0; overflow-y: auto; flex-grow: 1; }
+.conversation-item { padding: 0.75rem 1rem; cursor: pointer; border-radius: 8px; transition: background-color 0.2s; border-bottom: none; }
+.conversation-item:hover { background-color: var(--input-bg); }
+.conversation-item.selected { 
+  background-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 핵심 수정 ▼▼▼ */
+  color: white; 
+}
+.conversation-item-title { font-weight: 500; font-size: 0.95rem; }
+.conversation-item-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
+.tag-pill-small { background-color: var(--input-bg); color: var(--text-muted); padding: 0.1rem 0.5rem; border-radius: 99px; font-size: 0.7rem; }
+.conversation-item.selected .tag-pill-small { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
+
+/* --- 5. 채팅창 --- */
+/* [신규] 스티커와 메시지 리스트를 감싸는 컨테이너 */
+.message-view-content {
+  position: relative; /* 스티커 위치의 기준점 */
+  flex-grow: 1;       /* 남은 공간을 모두 차지 */
+  overflow: hidden;   /* 내부 요소가 둥근 모서리를 벗어나지 않도록 */
+}
+
+/* [수정] 이제 메시지 전용 스크롤 컨테이너 역할만 합니다. */
+.message-list { 
+  position: absolute;
+  inset: 0; /* 부모(.message-view-content)에 꽉 차게 설정 */
+  overflow-y: auto;
+  padding: 1.5rem; 
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; 
+}
+
+.message-row { display: flex; align-items: flex-start; gap: 0.75rem; max-width: 80%; }
+.message-row.me { align-self: flex-end; flex-direction: row-reverse; }
+.message-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.message-content-container { display: flex; flex-direction: column; }
+.message-row.other .message-content-container { align-items: flex-start; }
+.message-row.me .message-content-container { align-items: flex-end; }
+.message-sender-name { font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; }
+.message-row.me .message-sender-name { color: var(--name-me-color); }
+.message-row.other .message-sender-name { color: var(--name-other-color); }
+.message-bubble { padding: 0.75rem 1.1rem; border-radius: 20px; line-height: 1.6; box-shadow: 0 1px 2px rgba(0,0,0,0.05); white-space: pre-wrap; word-break: break-word; font-size: 0.95rem; }
+.message-bubble.me { background-color: var(--bubble-me-bg); color: #ffffff; border-bottom-right-radius: 6px; }
+.message-bubble.other { background-color: var(--bubble-other-bg); color: var(--text-color); border-bottom-left-radius: 6px; }
+
+.add-message-form { 
+  display: flex; padding: 1rem; gap: 0.75rem; background-color: var(--footer-bg);
+  border-top: 1px solid var(--border-color); flex-shrink: 0; align-items: center;
+}
+.add-message-form select, .add-message-form textarea {
+  border: 1px solid var(--border-color); background-color: var(--input-bg);
+  border-radius: 8px; padding: 0.6rem; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.add-message-form select:focus, .add-message-form textarea:focus { outline: none; border-color: var(--global-accent-color, #5865f2); box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33; } /* ▼▼▼ 수정 ▼▼▼ */
+.add-message-form textarea { flex-grow: 1; resize: none; }
+.add-message-form button { padding: 0.6rem 1.2rem; border: none; background-color: var(--global-accent-color, #5865f2); color: white; border-radius: 8px; cursor: pointer; transition: opacity 0.2s; } /* ▼▼▼ 핵심 수정 ▼▼▼ */
+.add-message-form button:hover { opacity: 0.9; }
+
+/* --- 6. 모달 & 폼 공통 스타일 --- */
+.modal-overlay { position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.modal-content { 
+  background-color: #fff;
+  color: #212529; /* [수정] 모달 텍스트 색상 고정 */
+  padding: 1.5rem; border-radius: var(--border-radius); width: 90%; max-width: 520px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15); 
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; } /* [수정] 변수 적용 */
+.modal-header h2 { margin: 0; font-size: 1.2rem; font-weight: 700; }
+.modal-close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #aaa; }
+.utility-panel { display: flex; flex-direction: column; gap: 1rem; }
+.utility-panel .form-card { background-color: #f8f9fa; border-radius: var(--border-radius); padding: 1rem; border: 1px solid var(--border-color); } /* [수정] 변수 적용 */
+.utility-panel .card-label { display: block; font-weight: 500; margin-bottom: 0.75rem; font-size: 0.85rem; }
+.utility-panel input[type="text"] { 
+  background-color: #fff; border-radius: 8px; border: 1px solid var(--border-color); /* [수정] 변수 적용 */
+  padding: 0.75rem; color: #212529; font-size: 0.9rem; width: 100%; /* [수정] 모달 텍스트 색상 고정 */
+}
+.utility-panel input[type="text"]:focus { outline: none; border-color: var(--global-accent-color, #5865f2); box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33; } /* ▼▼▼ 수정 ▼▼▼ */
+.btn-primary { background-color: var(--global-accent-color, #5865f2); color: white; width: 100%; margin-top: 0.5rem; } /* ▼▼▼ 핵심 수정 ▼▼▼ */
+ .btn-secondary, .btn-tertiary { padding: 0.8rem 1.2rem; border-radius: 8px; border: none; font-weight: 500; cursor: pointer; transition: opacity 0.2s; }
+.btn-primary:hover, .btn-secondary:hover { opacity: 0.9; }
+.btn-primary { background-color: var(--button-bg); color: white; width: 100%; margin-top: 0.5rem; }
+.btn-secondary { background-color: #e9ecef; color: #495057; }
+.btn-tertiary { background: none; color: var(--text-muted); text-decoration: underline; }
+.image-upload-grid { display: grid; grid-template-columns: 140px 1fr; gap: 1rem; align-items: center; }
+.image-preview-box { width: 100%; aspect-ratio: 16/9; background-color: #f0f2f5; border: 1px dashed #ced4da; border-radius: 8px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+.image-preview-instance { width: 100%; height: 100%; object-fit: cover; }
+.image-placeholder { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; color: #adb5bd; }
+.image-placeholder i { font-size: 1.5rem; }
+.image-placeholder span { font-size: 0.75rem; }
+.upload-description { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.75rem 0; }
+.avatar-preview { width: 64px !important; height: 64px !important; border-radius: 50%; }
+/* --- 7. 설정 패널 & 테마 에디터 (수정) --- */
+.settings-panel { display: flex; flex-direction: column; gap: 1rem; }
+.settings-section { border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; }
+.settings-title { margin-top: 0; margin-bottom: 1rem; color: var(--global-accent-color, #5865f2); font-size: 1rem; } /* ▼▼▼ 수정 ▼▼▼ */
+.font-control-group { margin-bottom: 1rem; }
+.font-control-group:last-child { margin-bottom: 0; }
+.font-control-group label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; }
+.slider-container { display: flex; align-items: center; gap: 1rem; }
+.slider-container input[type="range"] { flex-grow: 1; }
+.slider-container span { font-family: monospace; font-size: 0.85rem; min-width: 50px; text-align: right; }
+.settings-panel select { background-color: #f8f9fa; color: #212529; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 5px; width: 100%; }
+
+/* ▼▼▼ 테마 에디터 탭 UI 스타일 (신규) ▼▼▼ */
+.theme-editor-container {
+  display: flex;
+  flex-direction: column;
+}
+.theme-editor-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 1rem;
+}
+.tab-btn {
+  padding: 0.75rem 1rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* 부모의 border와 겹치도록 */
+}
+.tab-btn.active {
+  color: var(--global-accent-color, #5865f2); /* ▼▼▼ 수정 ▼▼▼ */
+  border-bottom-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 수정 ▼▼▼ */
+  font-weight: 500;
+}
+.theme-editor-content {
+  padding: 0.5rem 0;
+}
+.theme-editor-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.theme-option { display: flex; flex-direction: column; gap: 0.5rem; }
+.theme-option label { font-size: 0.85rem; }
+.color-input-wrapper { display: flex; align-items: center; gap: 0.75rem; }
+.color-input-wrapper input[type="color"] { width: 28px; height: 28px; border: none; padding: 0; border-radius: 5px; background: none; cursor: pointer; }
+/* ▼▼▼ [핵심 수정] span 스타일을 제거하고 input[type="text"] 스타일 추가 ▼▼▼ */
+.color-input-wrapper .color-text-input {
+  font-family: monospace;
+  font-size: 0.85rem;
+  width: 80px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: white;
+  color: var(--text-color, #212529);
   text-align: center;
 }
+.layout-settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+/* ▲▲▲ 테마 에디터 탭 UI 스타일 (신규) ▲▲▲ */
 
-.App-logo {
-  height: 40vmin;
+/* --- 8. 컨텍스트 메뉴 --- */
+.context-menu {
+  position: fixed; z-index: 1001; background-color: #fff; border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); padding: 0.4rem 0; min-width: 160px; border: 1px solid rgba(0,0,0,0.05);
+}
+.context-menu ul { list-style: none; padding: 0; margin: 0; }
+.context-menu li { padding: 0.6rem 1rem; cursor: pointer; color: #212529; font-size: 0.9rem; transition: background-color 0.1s; } /* [수정] 텍스트 색상 고정 */
+.context-menu li:hover { background-color: var(--input-bg); }
+.context-menu li.delete { color: #e53e3e; }
+.context-menu li.delete:hover { background-color: #e53e3e; color: white; }
+.context-menu li.separator { height: 1px; background-color: var(--border-color); margin: 0.4rem 0; padding: 0; } /* [수정] 변수 적용 */
+.context-menu li.separator:hover { background-color: var(--border-color); } /* [수정] 변수 적용 */
+
+/* --- 9. 이미지 크롭 모달 --- */
+.modal-content.image-crop-modal-content { max-width: 800px; }
+/* ▼▼▼ [새로 추가] 캐릭터 설정 모달 전용 스타일 ▼▼▼ */
+.modal-content.character-settings-modal-content {
+  max-width: 840px;
+}
+.character-settings-form .character-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.character-profile-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.character-editor-title {
+  margin: 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--button-bg);
+}
+.character-profile-editor .form-card input,
+.character-profile-editor .form-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.5rem;
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+.character-profile-editor .file-upload-controls input { margin-bottom: 0.5rem; }
+.character-profile-editor .file-upload-controls input:first-child {
+  margin-bottom: 0.5rem; /* 버전 이름과 사용자명 입력창 사이 간격 */
+}
+.character-profile-editor .file-upload-controls input:last-child { margin-bottom: 0; }
+.character-profile-editor .banner-preview {
+  aspect-ratio: 3 / 1;
+  width: 100%;
+  cursor: pointer;
+}
+
+/* ▼▼▼ [신규] 버전 관리 UI 스타일 ▼▼▼ */
+.form-card.version-manager {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.version-manager select {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+}
+.version-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+.version-buttons button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+.version-buttons button:hover {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+.version-buttons button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f8f9fa;
+}
+
+.color-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.color-picker-group label { font-size: 0.85rem; font-weight: 500; }
+.color-picker-group input[type="color"] {
+  width: 28px; height: 28px; border: 1px solid var(--border-color); padding: 2px;
+  border-radius: 5px; background: none; cursor: pointer;
+}
+.color-picker-group span { color: var(--text-muted); }
+/* ▲▲▲ [새로 추가] 캐릭터 설정 모달 전용 스타일 ▲▲▲ */
+.crop-container { width: 100%; height: 60vh; max-height: 500px; background-color: #000; margin-bottom: 1rem; }
+
+.crop-button { width: 100%; padding: 0.8rem; border: none; background-color: var(--global-accent-color, #5865f2); color: white; font-size: 1rem; border-radius: 8px; cursor: pointer; } /* ▼▼▼ 핵심 수정 ▼▼▼ */
+
+/* --- 10. 입력 다이얼로그 (InputDialog) --- */
+.input-dialog-form .form-card { padding: 0; background: none; border: none; }
+.input-dialog-form textarea, .input-dialog-form select {
+  background-color: #f8f9fa; border-radius: 8px; border: 1px solid var(--border-color); /* [수정] 변수 적용 */
+  padding: 0.75rem; color: #212529; font-size: 0.9rem; width: 100%; /* [수정] 텍스트 색상 고정 */
+}
+.input-dialog-form textarea { resize: vertical; }
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+.dialog-buttons .btn-primary, .dialog-buttons .btn-secondary { width: auto; margin-top: 0; }
+
+/* --- 11. 이미지 로딩 플레이스홀더 --- */
+.image-loading-placeholder { background-color: #e9ecef; animation: pulse 1.5s infinite ease-in-out; }
+@keyframes pulse { 0% { background-color: #e9ecef; } 50% { background-color: #f8f9fa; } 100% { background-color: #e9ecef; } }
+
+/* --- 12. 스티커 스타일 --- */
+.sticker-wrapper { position: absolute; cursor: move; z-index: 10; user-select: none; }
+.sticker-wrapper.selected { outline: 2px solid var(--global-accent-color, #5865f2); outline-offset: 4px; } /* ▼▼▼ 수정 ▼▼▼ */
+.sticker-image { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.sticker-handle {
+  position: absolute; width: 24px; height: 24px; background-color: var(--global-accent-color, #5865f2); color: white; border-radius: 50%; /* ▼▼▼ 핵심 수정 ▼▼▼ */
+  display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 11;
+}
+.rotate-handle { top: -12px; left: 50%; transform: translateX(-50%); cursor: alias; }
+.resize-handle { bottom: -12px; right: -12px; cursor: se-resize; }
+
+/* --- 13. 테마 선택 모달 --- */
+.theme-selection-description { margin-top: 0; margin-bottom: 1.5rem; color: var(--text-muted); text-align: center; }
+.theme-previews-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+.theme-preview-card {
+  border: 1px solid var(--border-color); border-radius: 8px; padding: 0.75rem; /* [수정] 변수 적용 */
+  cursor: pointer; transition: all 0.2s ease; background-color: #fff;
+}
+.theme-preview-card:hover { transform: translateY(-4px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-color: var(--global-accent-color, #5865f2); } /* ▼▼▼ 수정 ▼▼▼ */
+.theme-preview-title { margin: 0 0 0.75rem 0; text-align: center; font-size: 0.9rem; font-weight: 500; }
+.theme-preview-palette { display: flex; justify-content: center; gap: 0.5rem; height: 32px; }
+.theme-preview-colorbox { flex: 1; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; }
+
+/* --- 14. 미디어 및 임베드 메시지 스타일 --- */
+
+/* 메시지 입력창 파일 첨부 버튼 */
+.add-message-form .attach-file-btn {
+  background: none; border: none; font-size: 1.2rem; color: var(--text-muted); cursor: pointer; padding: 0.5rem;
+  border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+.add-message-form .attach-file-btn:hover { background-color: var(--input-bg); color: var(--text-color); }
+.add-message-form button[type="submit"] { padding: 0.6rem 1.2rem; }
+
+/* 미디어가 포함된 말풍선 스타일 조정 */
+.message-bubble.media {
+  padding: 0; background-color: transparent; box-shadow: none;
+  max-width: var(--media-max-width, 400px);
+  overflow: hidden; border-radius: 16px;
+}
+
+/* 이미지 및 비디오 스타일 */
+.message-media {
+  display: block; width: 100%; height: auto;
+  max-height: 500px;
+  object-fit: contain;
+  cursor: pointer; border-radius: 16px;
+}
+
+/* 미디어 로딩 플레이스홀더 */
+.media-loading-placeholder {
+  width: 300px; height: 200px; background-color: #e9ecef; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center; color: var(--text-muted);
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+/* ▼▼▼ 핵심 수정: 썸네일 스타일을 모두 제거하고 임베드 컨테이너 스타일만 남깁니다. ▼▼▼ */
+/* --- 15. 임베드 컨테이너 스타일 --- */
+.embed-container {
+  width: var(--media-max-width, 400px);
+  max-width: 100%; 
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.embed-container.youtube { 
+  aspect-ratio: 16 / 9; 
+}
+.embed-container.spotify { 
+  height: 152px; 
+  width: 100%;
+  max-width: var(--media-max-width, 400px);
+}
+.embed-container iframe { 
+  width: 100%; 
+  height: 100%; 
+  border: none; 
+}
+
+
+/* --- 16. Tiptap 에디터 및 콘텐츠 스타일 --- */
+/* (이하 Tiptap 스타일은 변경 없음) */
+.add-message-form .editor-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--input-bg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.add-message-form .editor-container:focus-within {
+  border-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 수정 ▼▼▼ */
+  box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33; /* ▼▼▼ 수정 ▼▼▼ */
+}
+.tiptap-editor-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.editor-toolbar button {
+  background: none; border: none; width: 28px; height: 28px;
+  border-radius: 4px; cursor: pointer; color: var(--text-muted); font-size: 0.9rem;
+}
+.editor-toolbar button:hover {
+  background-color: rgba(0,0,0,0.05);
+}
+.editor-toolbar button.is-active {
+  background-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 핵심 수정 ▼▼▼ */
+  color: white;
+}
+.font-size-selector {
+  border: 1px solid var(--border-color); border-radius: 4px;
+  background-color: var(--sidebar-bg); padding: 0.2rem 0.4rem; font-size: 0.8rem;
+}
+.ProseMirror {
+  padding: 0.6rem; min-height: 44px; max-height: 150px;
+  overflow-y: auto; outline: none; line-height: 1.6;
+}
+.ProseMirror p {
+  margin: 0;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); float: left; color: #adb5bd;
+  pointer-events: none; height: 0;
+}
+.message-text p {
+  margin: 0;
+}
+.message-text p + p {
+  margin-top: 0.5em;
+}
+.message-text sup {
+  vertical-align: super;
+  font-size: smaller;
+}
+.message-text sub {
+  vertical-align: sub;
+  font-size: smaller;
+}
+.rich-text-edit-container .tiptap-editor-wrapper {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+}
+.rich-text-edit-container .ProseMirror {
+  min-height: 120px;
+}
+.rich-text-edit-container .dialog-buttons {
+  justify-content: flex-end;
+}
+
+/* --- 17. 프로필 팝오버 스타일 --- */
+.profile-popover {
+  position: fixed;
+  width: 340px;
+  background-color: #18191c;
+  color: #dcddde;
+  border-radius: var(--border-radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 1002;
+  overflow: hidden;
+  transition: opacity 0.1s ease-in-out;
+}
+.popover-banner {
+  position: relative;
+  height: 100px;
+  background-color: #232428;
+}
+.popover-banner .popover-header {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.popover-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: relative;
+  z-index: 2;
+}
+.popover-avatar-wrapper {
+  position: absolute;
+  top: 52px;
+  left: 16px;
+  padding: 6px;
+  background-color: #18191c;
+  border-radius: 50%;
+  z-index: 3;
+}
+.popover-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #36393f;
+}
+.popover-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.popover-content {
+  padding: 60px 16px 16px 16px;
+}
+.popover-names {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.popover-display-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+}
+.popover-username {
+  font-size: 0.85rem;
+  color: #b9bbbe;
+}
+.popover-status {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.popover-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.06);
+  margin: 1rem 0;
+}
+.popover-memo h4 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #b9bbbe;
+  text-transform: uppercase;
+  margin: 0 0 0.5rem 0;
+}
+.popover-memo p {
+  font-size: 0.85rem;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.popover-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.popover-tag-pill {
+  background-color: #292b2f;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- 18. 북마크 패널 스타일 (새로 추가) --- */
+.bookmark-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 998;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 0.3s ease-in-out;
+}
+.bookmark-panel-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.bookmark-panel {
+  position: fixed;
+  top: 32px; /* TitleBar 높이 */
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background-color: var(--sidebar-bg, #fff);
+  box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+  z-index: 999;
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+}
+.bookmark-panel.open {
+  transform: translateX(0);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.bookmark-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color, #e9ecef);
+  flex-shrink: 0;
+}
+.bookmark-panel-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.panel-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.bookmark-list {
+  padding: 0.5rem;
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+.bookmark-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid var(--border-color, #e9ecef);
+}
+.bookmark-item:last-child {
+  border-bottom: none;
+}
+.bookmark-item:hover {
+  background-color: var(--input-bg, #f0f2f5);
+}
+
+.bookmark-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: var(--border-color);
+}
+.bookmark-item-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.bookmark-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+}
+.bookmark-item-sender {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+.bookmark-item-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bookmark-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  height: 100%;
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.bookmark-empty i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+.bookmark-empty p {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0 0 0.5rem 0;
+}
+.bookmark-empty span {
+  font-size: 0.8rem;
 }
 
-.App-link {
-  color: #61dafb;
+/* 메시지 내 북마크 아이콘 */
+.message-bubble {
+  position: relative; /* 아이콘 위치 기준 */
+}
+.message-bookmark-icon {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  font-size: 0.7rem;
+  color: var(--button-bg);
+  text-shadow: 0 0 3px rgba(0,0,0,0.5);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+/* 스크롤 시 하이라이트 효과 */
+.message-row.highlighted .message-bubble {
+  animation: highlight-anim 1.5s ease-out;
+}
+@keyframes highlight-anim {
+  0% { background-color: var(--bubble-me-bg); } /* me, other 분기 필요 */
+  50% { background-color: #ffc107; }
+  100% { background-color: var(--bubble-me-bg); }
+}
+
+.message-row.me.highlighted .message-bubble {
+  animation-name: highlight-me;
+}
+@keyframes highlight-me {
+  from, to { background-color: var(--bubble-me-bg); }
+  50% { background-color: #ffc107; }
+}
+
+.message-row.other.highlighted .message-bubble {
+  animation-name: highlight-other;
+}
+@keyframes highlight-other {
+  from, to { background-color: var(--bubble-other-bg); }
+  50% { background-color: #ffc107; }
+}
+
+/* --- 19. 공용 태그 입력 컴포넌트 스타일 (신규 추가) --- */
+.tag-input-container {
+  display: flex;
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  overflow: hidden; /* 내부 요소가 둥근 모서리를 벗어나지 않도록 */
+}
+
+.tag-input-container:focus-within {
+  outline: none;
+  border-color: var(--global-accent-color, #5865f2); /* ▼▼▼ 수정 ▼▼▼ */
+  box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33; /* ▼▼▼ 수정 ▼▼▼ */
+}
+
+.tag-input-container input {
+  border: none !important;
+  background: none !important;
+  flex-grow: 1;
+  padding: 0.75rem !important;
+  margin: 0 !important; /* 다른 input 스타일 재정의 */
+  box-shadow: none !important; /* 포커스 효과 중복 방지 */
+}
+
+.tag-input-container input:focus {
+  outline: none;
+  box-shadow: none !important;
+}
+
+.tag-input-container button {
+  flex-shrink: 0;
+  padding: 0 1rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  font-weight: 300;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tag-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: var(--input-bg, #f0f2f5);
+  color: var(--text-color);
+  padding: 0.3rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-color);
+}
+
+.tag-item button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.tag-item button:hover {
+  opacity: 1;
+}
+
+/* PairSettingsModal의 오래된 스타일 클래스 제거 (필요 시) */
+.pair-settings-form .form-group {
+  /* 이 클래스는 더 이상 사용되지 않으므로 관련 스타일이 있다면 제거해도 좋습니다. */
+}
+
+/* --- 20. 전역 스크롤바 스타일 (수정 완료) --- */
+
+/* Firefox 브라우저 */
+* {
+  scrollbar-width: thin; /* 스크롤바를 얇게 설정 */
+  scrollbar-color: var(--global-accent-color, #c1c1c1) transparent; /* 막대 색상과 트랙 색상 */
+}
+
+/* WebKit 기반 브라우저 (Chrome, Safari, Edge 등) */
+*::-webkit-scrollbar {
+  width: 6px; /* 세로 스크롤바 너비 */
+  height: 6px; /* 가로 스크롤바 높이 */
+}
+
+*::-webkit-scrollbar-track {
+  background-color: transparent; /* 트랙(배경)은 투명하게 처리 */
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--global-accent-color, #c1c1c1); /* 스크롤바 막대의 기본 색상 */
+  border-radius: 10px; /* 막대를 둥글게 만듦 */
+}
+/* ▲▲▲ 이 섹션으로 교체 ▲▲▲ */
+
+/* --- 21. 링크 미리보기 카드 스타일 (신규 추가) --- */
+.link-preview-card {
+  display: block;
+  max-width: var(--media-max-width, 400px);
+  background-color: var(--sidebar-bg, #ffffff);
+  border: 1px solid var(--border-color, #e9ecef);
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: var(--text-color);
+  transition: background-color 0.2s;
+}
+
+.link-preview-card:hover {
+  background-color: var(--input-bg, #f0f2f5);
+}
+
+.link-preview-image {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid var(--border-color, #e9ecef);
+}
+
+.link-preview-content {
+  padding: 0.8rem 1rem;
+}
+
+.link-preview-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  /* 두 줄 이상은 말줄임표로 처리 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link-preview-description {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  /* 세 줄 이상은 말줄임표로 처리 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+}
+
+.link-preview-service {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.6rem;
+  text-transform: capitalize; /* 첫 글자 대문자로 */
+}
+
+/* 링크 카드가 포함된 말풍선 스타일 조정 */
+.message-bubble.media .link-preview-card {
+  border: none; /* 말풍선 안에서는 테두리 제거 */
+}
+
+/* --- 22. 주석 (Comment) 스타일 (신규 추가) --- */
+
+/* 하이라이트 스타일 */
+.comment-highlight {
+  background: linear-gradient(to top, rgba(255, 230, 0, 0.5) 40%, transparent 40%);
+  padding-bottom: 1px; /* 약간의 공간 확보 */
+  cursor: help; /* 마우스 커서를 도움말로 변경 */
+  position: relative; /* 툴팁 위치의 기준점 */
+}
+
+/* 툴팁 기본 스타일 */
+.comment-highlight::after {
+  content: attr(data-comment); /* data-comment 속성 값을 내용으로 사용 */
+  position: absolute;
+  bottom: 100%; /* 텍스트 바로 위에 위치 */
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px; /* 텍스트와의 간격 */
+  
+  /* 모양 */
+  background-color: #333;
+  color: #fff;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  white-space: pre-wrap; /* 줄바꿈 유지 */
+  min-width: 150px;
+  max-width: 300px;
+  text-align: left;
+  
+  /* 숨김 및 애니메이션 */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  z-index: 10;
+}
+
+/* 툴팁 꼬리표 */
+.comment-highlight::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 2px; /* 툴팁 본체와 꼬리표 사이 간격 */
+
+  border: 6px solid transparent;
+  border-top-color: #333;
+
+  /* 숨김 및 애니메이션 */
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+  z-index: 10;
+}
+
+
+/* hover 시 툴팁 보이기 */
+.comment-highlight:hover::after,
+.comment-highlight:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* --- 23. 스티커 FX 관련 스타일 (수정 완료) --- */
+
+/* FX 핸들 아이콘 */
+.sticker-handle.fx-handle {
+  bottom: -12px;
+  left: -12px;
+  cursor: pointer;
+  background-color: #9b59b6;
+}
+
+/* ▼▼▼ [핵심 수정] 복원된 렌더링 구조에 맞춘 CSS ▼▼▼ */
+.sticker-wrapper {
+  /* CSS 변수 선언 */
+  --sticker-shadow: none;
+  --gradient-overlay: none;
+  --border-color: transparent;
+  --border-width: 0px;
+  --border-radius: 0px;
+  --sticker-mask-image: none;
+
+  /* 그림자 효과 적용 */
+  filter: drop-shadow(var(--sticker-shadow));
+}
+
+/* 테두리를 그리기 위한 외부 컨테이너 (이미지 스티커 전용) */
+.sticker-border-container {
+  width: 100%;
+  height: 100%;
+  padding: var(--border-width);
+  background-color: var(--border-color);
+  border-radius: var(--border-radius);
+  
+  /* 이미지 스티커에만 마스크 적용 */
+  mask-image: var(--sticker-mask-image);
+  mask-size: 100% 100%;
+  -webkit-mask-image: var(--sticker-mask-image);
+  -webkit-mask-size: 100% 100%;
+}
+
+/* 실제 이미지와 그라데이션을 담는 내부 컨테이너 */
+.sticker-image-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: transparent; /* 투명 배경 */
+  border-radius: calc(var(--border-radius) - var(--border-width));
+  overflow: hidden;
+}
+
+/* 그라데이션 오버레이 */
+.sticker-image-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-overlay, none);
+  pointer-events: none;
+  
+  /* 그라데이션도 이미지 모양에 맞게 잘라냄 */
+  mask-image: var(--sticker-mask-image);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-image: var(--sticker-mask-image);
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+}
+
+/* 실제 이미지 */
+.sticker-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* ▲▲▲ */
+
+
+/* FX 모달 내부 UI */
+.fx-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.fx-group .card-label.fx-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+}
+.fx-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.fx-control {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.fx-control.slider {
+  gap: 0.75rem;
+}
+.fx-control.slider input[type="range"] {
+  flex-grow: 1;
+}
+.fx-control.slider span:last-child {
+  font-family: monospace;
+  min-width: 40px;
+  text-align: right;
+}
+.fx-controls select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+
+/* 토글 스위치 스타일 */
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #e9ecef;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle-switch:checked {
+  background-color: var(--global-accent-color, #5865f2);
+}
+.toggle-switch:checked::before {
+  transform: translateX(18px);
+}
+
+/* 스티커 애니메이션 */
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0);
   }
-  to {
-    transform: rotate(360deg);
+  40% {
+    transform: translateY(-15px);
   }
+  60% {
+    transform: translateY(-7px);
+  }
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+/* --- 24. 드래그 가능한 모달 스타일 (신규 추가) --- */
+
+/* 드래그 핸들(모달 헤더)에 마우스 커서 변경 */
+.modal-header.is-draggable {
+  cursor: move;
+  user-select: none; /* 헤더 텍스트가 드래그 중 선택되지 않도록 */
+}
+
+/* 모달이 드래그되는 동안 body의 텍스트 선택을 방지 */
+body.is-dragging {
+  user-select: none;
+}
+
+/* --- 24. 드래그 가능한 모달 스타일 (신규 추가) --- */
+
+/* 드래그 핸들(모달 헤더)에 마우스 커서 변경 */
+.modal-header.is-draggable {
+  cursor: move;
+  user-select: none; /* 헤더 텍스트가 드래그 중 선택되지 않도록 */
+}
+
+/* 모달이 드래그되는 동안 body의 텍스트 선택을 방지 */
+body.is-dragging {
+  user-select: none;
+}
+
+
+/* ▼▼▼ [핵심] 커스텀 슬라이더 스타일 섹션 추가 ▼▼▼ */
+
+/* --- 25. 커스텀 폼 컨트롤 스타일 (신규 추가) --- */
+
+input[type="range"] {
+  /* 기본 스타일 제거 */
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%; /* 부모 요소 너비에 맞춤 */
+}
+
+/* --- WebKit (Chrome, Safari, Edge) --- */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  /* 슬라이더 진행률에 따라 색상이 변하는 그라데이션 배경 */
+  background: linear-gradient(
+    to right, 
+    var(--global-accent-color, #5865f2) var(--slider-progress, 0%), 
+    #e9ecef var(--slider-progress, 0%)
+  );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; /* 기본 핸들 모양 제거 */
+  appearance: none;
+  margin-top: -6px; /* 트랙 중앙에 오도록 위치 조정 (thumb height / 2 - track height / 2) * -1 */
+  background-color: var(--global-accent-color, #5865f2);
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.1s ease-in-out;
+}
+
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.1); /* 클릭 시 살짝 커지는 효과 */
+}
+
+/* --- Firefox --- */
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #e9ecef; /* Firefox는 그라데이션 트랙을 직접 지원하지 않으므로 단색으로 처리 */
+}
+
+input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--global-accent-color, #5865f2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  background-color: var(--global-accent-color, #5865f2);
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.1s ease-in-out;
+}
+
+input[type="range"]:active::-moz-range-thumb {
+  transform: scale(1.1);
+}
+
+/* --- 26. 텍스트 스티커 모달 스타일 (신규 추가) --- */
+
+.text-sticker-modal-content .form-card {
+  padding: 1rem;
+}
+
+.text-sticker-preview {
+  width: 100%;
+  min-height: 150px;
+  border-radius: var(--border-radius);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  border: 1px dashed var(--border-color);
+  background-color: #f0f2f5;
+  text-align: center;
+  overflow: hidden;
+}
+
+.text-sticker-preview span {
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.text-sticker-modal-content textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: #fff;
+  resize: vertical;
+}
+
+.text-sticker-controls-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* ▼▼▼ [수정] 폼 카드 내부를 flexbox로 만들어 컨트롤 간 간격 자동 조절 ▼▼▼ */
+.text-sticker-controls-grid .form-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.text-sticker-controls-grid select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+.sticker-color-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: center;
+  text-align: center;
+}
+
+.sticker-color-controls div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.sticker-color-controls input[type="color"] {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  padding: 2px;
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+.sticker-color-controls input[type="color"]:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ▼▼▼ [수정] 색상 패널의 슬라이더에 라벨 추가를 위해 스타일 조정 ▼▼▼ */
+.text-sticker-controls-grid .form-card .slider-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.text-sticker-controls-grid .form-card .slider-container span:first-of-type {
+  font-size: 0.85rem;
+}
+.text-sticker-controls-grid .form-card .slider-container span:last-of-type {
+  font-family: monospace;
+  min-width: 50px;
+  text-align: right;
+}
+
+
+.transparent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Workspace 헤더 아이콘 변경 대응 */
+.workspace-header .theme-edit-btn i.fa-sticky-note {
+  /* 기존 아이콘은 이제 사용되지 않으므로, 필요 시 이 스타일은 제거해도 됩니다. */
+}
+
+/* ▼▼▼ [신규] 메시지 입력창 버전 선택 UI 스타일 ▼▼▼ */
+.add-message-form .sender-selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+.add-message-form .sender-selector-group select {
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-size: 0.85rem;
+}
+.add-message-form .sender-selector-group select.version-selector {
+  max-width: 120px; /* 버전 이름이 너무 길 경우를 대비 */
+}
+.add-message-form .sender-selector-group select:focus {
+  outline: none;
+  border-color: var(--global-accent-color, #5865f2);
+  box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33;
+}
+
+/* 기존 메시지 입력창 레이아웃 조정 */
+.add-message-form {
+  align-items: flex-start; /* 컨트롤 높이가 달라지므로 상단 정렬 */
+}
+.add-message-form .editor-container, 
+.add-message-form .attach-file-btn,
+.add-message-form button[type="submit"] {
+  margin-top: auto; /* 키 큰 요소(sender-selector-group)의 아래쪽에 정렬되도록 */
+}
+
+/* --- RichTextEditModal 버전 선택 UI 스타일 --- */
+.rich-text-edit-container .form-group-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.rich-text-edit-container .form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.rich-text-edit-container .form-group label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.rich-text-edit-container .form-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
 }

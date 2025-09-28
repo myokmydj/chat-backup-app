@@ -1,0 +1,70 @@
+/* 파일: src/components/TitleBar.css */
+
+.title-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 32px;
+  color: #dcddde;
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 9999;
+  user-select: none;
+}
+
+.title-bar-drag-region {
+  flex-grow: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+}
+
+.title-text {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.window-controls {
+  display: flex;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.window-control-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  width: 46px;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+  color: #dcddde; /* 아이콘 색상 상속을 위한 기본 색상 */
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.window-control-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* ▼▼▼ 새로 추가된 설정 버튼 스타일 ▼▼▼ */
+.settings-btn {
+  font-size: 16px; /* 톱니바퀴 아이콘 크기 */
+  width: 40px;   /* 너비를 살짝 줄임 */
+}
+
+/* ▼▼▼ 기존 아이콘 색상이 확실히 보이도록 수정 ▼▼▼ */
+.window-control-btn svg {
+  width: 10px;
+  height: 10px;
+  fill: currentColor; /* 버튼의 color 속성을 상속받아 채움 */
+}
+
+#close-btn:hover {
+  background-color: #e81123;
+  color: white;
+}

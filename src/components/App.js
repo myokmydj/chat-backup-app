@@ -44,6 +44,7 @@ const DEFAULT_WORKSPACE_THEME = {
   mediaMaxWidth: 400,
 };
 
+// ▼▼▼ [수정] 캐릭터 프로필 기본값 생성 함수 ▼▼▼
 const createDefaultCharacterVersion = (name, username) => ({
   id: `v_${Date.now()}_${Math.random()}`,
   name: name || '기본 버전',
@@ -143,6 +144,7 @@ function App() {
 
   const handleAddMessage = useCallback(async (convoId, messageData) => {
     let newMessage;
+    // ▼▼▼ [수정] 메시지 데이터에서 characterVersionId를 추출 ▼▼▼
     const { characterVersionId } = messageData;
 
     if (messageData.type === 'file') {
@@ -228,52 +230,8 @@ function App() {
   const handleOpenConvoSettingsModal = useCallback((convoId) => { const pair = (Array.isArray(characterPairs) ? characterPairs : []).find(p => p.id === selectedPairId); const convo = (pair?.conversations || []).find(c => c.id === convoId); if (convo) setEditingConvo(convo); }, [characterPairs, selectedPairId]);
   const handleUpdateConversation = useCallback((convoId, updatedData) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).map(c => c.id !== convoId ? c : { ...c, ...updatedData }); return { ...p, conversations: updatedConversations }; })); setEditingConvo(null); }, [selectedPairId]);
   const handleDeleteConversation = useCallback((convoId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).filter(c => c.id !== convoId); return { ...p, conversations: updatedConversations }; })); }, [selectedPairId]);
-  
-  // ▼▼▼ [수정] handleEditMessage가 content, sender, characterVersionId를 포함하는 객체를 받도록 변경 ▼▼▼
-  const handleEditMessage = useCallback((convoId, messageId, updatedData) => {
-    setCharacterPairs(pairs => pairs.map(pair => {
-      if (pair.id !== selectedPairId) return pair;
-      return {
-        ...pair,
-        conversations: pair.conversations.map(convo => {
-          if (convo.id !== convoId) return convo;
-          return {
-            ...convo,
-            messages: convo.messages.map(msg => 
-              msg.id === messageId ? { ...msg, ...updatedData } : msg
-            )
-          };
-        })
-      };
-    }));
-  }, [selectedPairId]);
-
-  // ▼▼▼ [수정] handleAddMessageInBetween이 characterVersionId를 포함하도록 변경 ▼▼▼
-  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => {
-    const newMessage = {
-      id: Date.now(),
-      type: 'text',
-      content: messageData.text,
-      sender: messageData.sender,
-      characterVersionId: messageData.characterVersionId, // ID 추가
-    };
-    setCharacterPairs(pairs => pairs.map(pair => {
-      if (pair.id !== selectedPairId) return pair;
-      return {
-        ...pair,
-        conversations: pair.conversations.map(convo => {
-          if (convo.id !== convoId) return convo;
-          const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId);
-          if (targetIndex === -1) return convo;
-          const newMessages = [...convo.messages];
-          const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
-          newMessages.splice(insertIndex, 0, newMessage);
-          return { ...convo, messages: newMessages };
-        })
-      };
-    }));
-  }, [selectedPairId]);
-
+  const handleEditMessage = useCallback((convoId, messageId, newText, newSender) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.map(msg => msg.id === messageId ? { ...msg, content: newText, sender: newSender } : msg) }; }) }; })); }, [selectedPairId]);
+  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => { const newMessage = { ...messageData, id: Date.now(), type: 'text', content: messageData.text }; setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId); if (targetIndex === -1) return convo; const newMessages = [...convo.messages]; const insertIndex = position === 'before' ? targetIndex : targetIndex + 1; newMessages.splice(insertIndex, 0, newMessage); return { ...convo, messages: newMessages }; }) }; })); }, [selectedPairId]);
   const handleDeleteMessage = useCallback((convoId, messageId) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.filter(msg => msg.id !== messageId) }; }) }; })); }, [selectedPairId]);
   const handleUpdateStickers = useCallback((convoId, newStickers) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, stickers: newStickers }; }) }; })); }, [selectedPairId]);
   
