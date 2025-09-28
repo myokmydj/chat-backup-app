@@ -1,4 +1,4 @@
-// File: src/components/Workspace.js (수정 완료)
+// File: src/components/Workspace.js
 
 import React, { useState, useRef, useEffect } from 'react';
 import ConversationList from './ConversationList';
@@ -109,7 +109,7 @@ const Workspace = ({
   };
 
   const handleAddMessageRequest = (messageData) => {
-    const { type, file, sender } = messageData;
+    const { type, file } = messageData;
 
     if (type === 'text') {
       onAddMessage(selectedConversationId, messageData);
@@ -145,7 +145,6 @@ const Workspace = ({
     setIsBookmarkPanelOpen(false);
   };
 
-  // ▼▼▼ [핵심 수정] isTextSticker 파라미터 추가 ▼▼▼
   const addNewStickerToConversation = async (imageBlob, isTextSticker = false) => {
     if (!selectedConversationId) return;
     try {
@@ -154,7 +153,7 @@ const Workspace = ({
         id: `sticker_${Date.now()}`, 
         imageId: imageId, 
         x: 100, y: 100, width: 150, rotate: 0,
-        isTextSticker: isTextSticker, // 스티커 종류 구분 플래그
+        isTextSticker: isTextSticker,
         effects: {
           border: { enabled: false, color: '#FFFFFF', width: 2 },
           shadow: { enabled: false, color: '#000000', blur: 5, offsetX: 2, offsetY: 2 },
@@ -175,13 +174,13 @@ const Workspace = ({
   const handleStickerFileSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      await addNewStickerToConversation(file, false); // 이미지 스티커이므로 false
+      await addNewStickerToConversation(file, false);
     }
     e.target.value = null;
   };
 
   const handleAddTextSticker = async (stickerBlob) => {
-    await addNewStickerToConversation(stickerBlob, true); // 텍스트 스티커이므로 true
+    await addNewStickerToConversation(stickerBlob, true);
   };
 
   const closeDialog = () => setDialogState({ isOpen: false, title: '', fields: [], onConfirm: () => {}, formData: {} });
@@ -235,13 +234,12 @@ const Workspace = ({
       {
         label: '앞에 추가',
         action: () => {
-          const sender = 'Me';
           const versions = pairData.characters.me || [];
           const characterVersionId = versions.length > 0 ? versions[0].id : null;
           setDialogState({
             isOpen: true,
             title: '메시지 앞에 추가',
-            formData: { text: '', sender, characterVersionId },
+            formData: { text: '', sender: 'Me', characterVersionId },
             onConfirm: (formData) => {
               if(formData.text.trim()) {
                 onAddMessageInBetween(selectedConversationId, messageId, formData, 'before');
@@ -254,13 +252,12 @@ const Workspace = ({
       {
         label: '뒤에 추가',
         action: () => {
-          const sender = 'Other';
           const versions = pairData.characters.other || [];
           const characterVersionId = versions.length > 0 ? versions[0].id : null;
           setDialogState({
             isOpen: true,
             title: '메시지 뒤에 추가',
-            formData: { text: '', sender, characterVersionId },
+            formData: { text: '', sender: 'Other', characterVersionId },
             onConfirm: (formData) => {
               if(formData.text.trim()) {
                 onAddMessageInBetween(selectedConversationId, messageId, formData, 'after');
@@ -309,7 +306,7 @@ const Workspace = ({
     if (JSON.stringify(newFields) !== JSON.stringify(dialogState.fields)) {
       setDialogState(prev => ({ ...prev, fields: newFields }));
     }
-  }, [dialogState.isOpen, dialogState.formData.sender, pairData.characters]);
+  }, [dialogState.isOpen, dialogState.formData, dialogState.fields, pairData.characters]);
 
 
   const closeContextMenu = () => setContextMenu(prev => ({ ...prev, isOpen: false }));

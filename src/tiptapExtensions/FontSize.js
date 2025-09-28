@@ -1,7 +1,7 @@
-// 파일: src/tiptapExtensions/FontSize.js (수정 완료)
+// 파일: src/tiptapExtensions/FontSize.js
 
-import { Mark, getMarkAttributes } from '@tiptap/core';
-import { TextStyle } from '@tiptap/extension-text-style'; // ▼▼▼ 이 import를 최상단으로 이동 ▼▼▼
+import { Mark } from '@tiptap/core';
+import { TextStyle } from '@tiptap/extension-text-style';
 
 export const FontSize = Mark.create({
   name: 'fontSize',
@@ -59,8 +59,6 @@ export const FontSize = Mark.create({
   },
 });
 
-// TextStyle 확장을 수정하여 fontSize 속성을 포함하도록 합니다.
-// 이렇게 하면 Tiptap이 fontSize를 텍스트 스타일의 일부로 인식하게 됩니다.
 TextStyle.configure({
     HTMLAttributes: {
         class: null,

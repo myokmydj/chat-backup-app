@@ -1,6 +1,6 @@
-// File: src/components/TextStickerModal.js (수정 완료)
+// File: src/components/TextStickerModal.js
 
-import React, { useState, useEffect, useRef } from 'react'; // ▼▼▼ [수정] 쉼표 제거
+import React, { useState, useRef } from 'react';
 import SettingsModal from './SettingsModal';
 import CustomSlider from './CustomSlider';
 
