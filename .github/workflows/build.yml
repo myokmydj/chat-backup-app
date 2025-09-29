@@ -33,9 +33,8 @@ jobs:
       - name: Package Application
         run: npx electron-builder
         
-      # ▼▼▼ 빌드된 파일을 업로드하여 다운로드할 수 있도록 하는 단계 ▼▼▼
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4 # ▼▼▼ [핵심 수정] v3에서 v4로 버전 업그레이드
         with:
           name: ${{ matrix.os }}-build
           path: dist
