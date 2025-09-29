@@ -78,24 +78,21 @@ const getInitialState = (key, defaultValue) => {
   }
 };
 
+// ▼▼▼ [핵심 수정] 사용하지 않는 needsUpdate 변수 관련 로직 제거 ▼▼▼
 const migrateDataStructure = (pairs) => {
   if (!Array.isArray(pairs)) return [];
   return pairs.map(pair => {
-    let needsUpdate = false;
     if (!pair.hasOwnProperty('folders')) {
       pair.folders = [];
-      needsUpdate = true;
     }
     if (Array.isArray(pair.conversations)) {
       pair.conversations = pair.conversations.map((convo, index) => {
         const updatedConvo = { ...convo };
         if (!convo.hasOwnProperty('order')) {
           updatedConvo.order = index;
-          needsUpdate = true;
         }
         if (!convo.hasOwnProperty('folderId')) {
           updatedConvo.folderId = null;
-          needsUpdate = true;
         }
         return updatedConvo;
       });
