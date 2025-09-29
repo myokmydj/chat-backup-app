@@ -1,6 +1,6 @@
 {
   "name": "chat-backup-app",
-  "version": "0.1.11",
+  "version": "0.1.0",
   "description": "A backup application for chat logs.",
   "author": {
     "name": "myokmydj",
@@ -26,7 +26,6 @@
     "cropperjs": "^2.0.1",
     "dexie": "^4.2.0",
     "electron-is-dev": "^2.0.0",
-    "electron-updater": "^6.2.1",
     "font-list": "^2.0.1",
     "react": "^19.1.1",
     "react-cropper": "^2.3.3",
@@ -43,8 +42,7 @@
     "electron:start": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "npm run build && electron-builder",
     "package:win": "npm run build && electron-builder --win",
-    "package:mac": "npm run build && electron-builder --mac",
-    "release": "npm run build && electron-builder --publish always"
+    "package:mac": "npm run build && electron-builder --mac"
   },
   "eslintConfig": {
     "extends": [
@@ -75,44 +73,16 @@
       "buildResources": "assets"
     },
     "win": {
-      "target": "nsis",
-      "publisherName": "myokmydj",
-      "verifyUpdateCodeSignature": false
-    },
-    "nsis": {
-      "allowToChangeInstallationDirectory": true,
-      "oneClick": false,
-      "perMachine": false
+      "target": "nsis"
     },
     "mac": {
-      "target": "dmg",
-      "identity": null
-    },
-    "dmg": {
-      "contents": [
-        {
-          "x": 130,
-          "y": 220
-        },
-        {
-          "x": 410,
-          "y": 220,
-          "type": "link",
-          "path": "/Applications"
-        }
-      ]
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "myokmydj",
-      "repo": "chat-backup-app"
+      "target": "dmg"
     }
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
     "electron": "^31.2.1",
     "electron-builder": "^24.13.3",
-    "electron-log": "^5.1.5",
     "wait-on": "^7.2.0"
   }
 }
