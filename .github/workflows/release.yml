@@ -8,10 +8,8 @@ on:
       - 'v*' # v1.0.0, v1.2.3 등 'v'로 시작하는 태그가 푸시될 때만 실행
 
 jobs:
-  release: # ▼▼▼ [수정] job 이름을 build에서 release로 변경 (더 명확하게)
-    runs-on: ubuntu-latest # ▼▼▼ [핵심 수정] 리소스 효율이 좋은 ubuntu-latest Runner 하나만 사용
-
-    # ▼▼▼ [수정] Windows, macOS를 동시에 빌드하므로 matrix 전략 제거
+  release:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out Git repository
@@ -38,5 +36,5 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # ▼▼▼ [핵심 수정] Linux Runner에서 Windows와 macOS용 패키지를 모두 빌드하도록 설정
-        run: electron-builder --win --mac --publish always
+        # ▼▼▼ [핵심 수정] npx를 사용하여 electron-builder 실행 ▼▼▼
+        run: npx electron-builder --win --mac --publish always
