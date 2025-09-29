@@ -21,20 +21,16 @@ jobs:
           node-version: 20
           cache: 'npm'
       
-      # ▼▼▼ [핵심 수정 1] macOS DMG 빌드에 필요한 도구 설치
       - name: Install macOS build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y icnsutils graphicsmagick xz-utils
 
-      # ▼▼▼ [핵심 수정 2] npm ci 대신 npm install 사용 및 dmg-license 강제 설치
       - name: Install dependencies
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
-        run: |
-          npm install
-          npm install dmg-license --save-optional --no-save
-          
+        run: npm ci
+
       - name: Build React App
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
