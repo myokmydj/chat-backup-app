@@ -5,7 +5,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*' # v1.0.0, v1.2.3 등 'v'로 시작하는 태그가 푸시될 때만 실행
+      - 'v*'
 
 jobs:
   release:
@@ -20,12 +20,21 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
+      
+      # ▼▼▼ [핵심 수정 1] macOS DMG 빌드에 필요한 도구 설치
+      - name: Install macOS build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y icnsutils graphicsmagick xz-utils
 
+      # ▼▼▼ [핵심 수정 2] npm ci 대신 npm install 사용 및 dmg-license 강제 설치
       - name: Install dependencies
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
-        run: npm ci
-
+        run: |
+          npm install
+          npm install dmg-license --save-optional --no-save
+          
       - name: Build React App
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
@@ -36,5 +45,4 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # ▼▼▼ [핵심 수정] npx를 사용하여 electron-builder 실행 ▼▼▼
         run: npx electron-builder --win --mac --publish always
