@@ -1,7 +1,6 @@
-
 {
   "name": "chat-backup-app",
-  "version": "0.1.6",
+  "version": "0.1.9",
   "description": "A backup application for chat logs.",
   "author": {
     "name": "myokmydj",
@@ -27,7 +26,6 @@
     "cropperjs": "^2.0.1",
     "dexie": "^4.2.0",
     "electron-is-dev": "^2.0.0",
-    "electron-log": "^5.1.5",
     "electron-updater": "^6.2.1",
     "font-list": "^2.0.1",
     "react": "^19.1.1",
@@ -36,6 +34,9 @@
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5"
+  },
+  "optionalDependencies": {
+    "dmg-license": "^1.0.11"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -100,6 +101,7 @@
     "concurrently": "^8.2.2",
     "electron": "^31.2.1",
     "electron-builder": "^24.13.3",
+    "electron-log": "^5.1.5",
     "wait-on": "^7.2.0"
   }
 }
