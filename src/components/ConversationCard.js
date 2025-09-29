@@ -1,14 +1,20 @@
 // src/components/ConversationCard.js (수정 완료)
 import React from 'react';
 
-// onContextMenu prop을 추가로 받도록 수정
-const ConversationCard = ({ log, onSelect, onContextMenu }) => {
+// onContextMenu prop과 드래그앤드롭 관련 props를 추가로 받도록 수정
+const ConversationCard = ({ log, onSelect, onContextMenu, ...dragProps }) => {
   return (
     <div
-      className="conversation-card"
+      className={`conversation-card ${dragProps.isDragging ? 'dragging' : ''}`}
       style={{ backgroundImage: `url(${log.backgroundImage})` }}
       onClick={() => onSelect(log.id)}
-      onContextMenu={onContextMenu} // ▼▼▼ NEW ▼▼▼: 이벤트 핸들러 연결
+      onContextMenu={onContextMenu}
+      // ▼▼▼ NEW: 드래그앤드롭 이벤트 핸들러 연결 ▼▼▼
+      draggable={dragProps.draggable}
+      onDragStart={dragProps.onDragStart}
+      onDragOver={dragProps.onDragOver}
+      onDrop={dragProps.onDrop}
+      onDragEnd={dragProps.onDragEnd}
     >
       <div className="card-content">
         <div className="card-title">{log.title}</div>

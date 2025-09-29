@@ -1,0 +1,32 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # v1.0.0, v1.2.3 등 'v'로 시작하는 태그가 푸시될 때만 실행
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v3
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18 # 사용하시는 Node.js 버전
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build and release application
+        # ▼▼▼ [핵심] GITHUB_TOKEN을 환경 변수로 전달 ▼▼▼
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run release

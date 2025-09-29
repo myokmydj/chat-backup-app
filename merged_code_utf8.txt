@@ -86,6 +86,7 @@
 }
 
 
+
 // ======================================================
 // File: src\components\AddPairModal.js
 // ======================================================
@@ -509,35 +510,51 @@ const ContextMenu = ({ position, items, onClose }) => {
     };
   }, [onClose]);
 
-  // 메뉴 항목이 없으면 렌더링하지 않음
   if (!items || items.length === 0) {
     return null;
   }
 
+  const renderMenuItem = (item, index) => {
+    if (item.isSeparator) {
+      return <li key={`separator-${index}`} className="separator"></li>;
+    }
+
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
+
+    return (
+      <li
+        key={item.label}
+        onClick={(e) => {
+          if (!hasSubmenu && item.action) {
+            item.action();
+            onClose();
+          } else if (!hasSubmenu) {
+            onClose();
+          }
+          // 하위 메뉴가 있는 경우, 클릭해도 메뉴가 닫히지 않도록 함
+        }}
+        className={`${item.className || ''} ${hasSubmenu ? 'has-submenu' : ''}`}
+      >
+        {item.label}
+        {hasSubmenu && (
+          <div className="context-menu submenu">
+            <ul>
+              {item.submenu.map(renderMenuItem)}
+            </ul>
+          </div>
+        )}
+      </li>
+    );
+  };
+
   return (
-    <div 
+    <div
       ref={menuRef}
-      className="context-menu" 
+      className="context-menu"
       style={{ top: position.y, left: position.x }}
     >
       <ul>
-        {items.map((item, index) => (
-          // isSeparator가 true이면 구분선 렌더링
-          item.isSeparator ? (
-            <li key={`separator-${index}`} className="separator"></li>
-          ) : (
-            <li 
-              key={item.label}
-              onClick={() => {
-                if (item.action) item.action();
-                onClose(); // 메뉴 항목 클릭 후 메뉴 닫기
-              }} 
-              className={item.className || ''}
-            >
-              {item.label}
-            </li>
-          )
-        ))}
+        {items.map(renderMenuItem)}
       </ul>
     </div>
   );
@@ -553,14 +570,20 @@ export default ContextMenu;
 // src/components/ConversationCard.js (수정 완료)
 import React from 'react';
 
-// onContextMenu prop을 추가로 받도록 수정
-const ConversationCard = ({ log, onSelect, onContextMenu }) => {
+// onContextMenu prop과 드래그앤드롭 관련 props를 추가로 받도록 수정
+const ConversationCard = ({ log, onSelect, onContextMenu, ...dragProps }) => {
   return (
     <div
-      className="conversation-card"
+      className={`conversation-card ${dragProps.isDragging ? 'dragging' : ''}`}
       style={{ backgroundImage: `url(${log.backgroundImage})` }}
       onClick={() => onSelect(log.id)}
-      onContextMenu={onContextMenu} // ▼▼▼ NEW ▼▼▼: 이벤트 핸들러 연결
+      onContextMenu={onContextMenu}
+      // ▼▼▼ NEW: 드래그앤드롭 이벤트 핸들러 연결 ▼▼▼
+      draggable={dragProps.draggable}
+      onDragStart={dragProps.onDragStart}
+      onDragOver={dragProps.onDragOver}
+      onDrop={dragProps.onDrop}
+      onDragEnd={dragProps.onDragEnd}
     >
       <div className="card-content">
         <div className="card-title">{log.title}</div>
@@ -590,14 +613,13 @@ export default ConversationCard;
 // File: src\components\ConversationList.js
 // ======================================================
 
-// 파일: src/components/ConversationList.js (원래대로 복구)
+// 파일: src/components/ConversationList.js (수정 완료)
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { db } from '../db';
 import IndexedDBImage from './IndexedDBImage';
 import ContextMenu from './ContextMenu';
 
-// ImageSlider 컴포넌트: 파일 선택 시 부모로 이벤트를 전달하는 역할만 하도록 단순화
 const ImageSlider = ({ images, onSelect, onAdd, onDelete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const fileInputRef = useRef(null);
@@ -634,7 +656,7 @@ const ImageSlider = ({ images, onSelect, onAdd, onDelete }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      onAdd(file); // 선택된 파일을 부모(Workspace)로 전달
+      onAdd(file);
     }
     e.target.value = null;
   };
@@ -652,7 +674,7 @@ const ImageSlider = ({ images, onSelect, onAdd, onDelete }) => {
     if (safeImages.length > 0) {
       const imageRecord = await db.images.get(safeImages[currentIndex]);
       if (imageRecord && imageRecord.data) {
-        onSelect(imageRecord.data); // Blob 데이터를 부모(Workspace)로 전달
+        onSelect(imageRecord.data);
       }
     }
   };
@@ -682,45 +704,165 @@ const ImageSlider = ({ images, onSelect, onAdd, onDelete }) => {
   );
 };
 
-const ConversationList = ({ 
-  pairId,
-  conversations, 
-  selectedConversationId, 
-  onSelectConversation, 
+const ConversationList = ({
+  pairData,
+  selectedConversationId,
+  onSelectConversation,
   onAddConversation,
   onEditConversation,
   onDeleteConversation,
   slideImages,
   onSelectSlideImage,
   onAddSlideImage,
-  onDeleteSlideImage, 
+  onDeleteSlideImage,
+  onAddFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onReorderItems,
+  onMoveConversationToFolder,
 }) => {
   const [newConversationTitle, setNewConversationTitle] = useState('');
   const [newTags, setNewTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
-  const [contextMenu, setContextMenu] = useState({ isOpen: false, position: { x: 0, y: 0 }, convoId: null });
+  const [contextMenu, setContextMenu] = useState({ isOpen: false, position: {}, item: null, type: null });
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragOverItem, setDragOverItem] = useState(null);
+  const [collapsedFolders, setCollapsedFolders] = useState({});
 
   const handleAddTag = () => { const trimmedTag = tagInput.trim(); if (trimmedTag && !newTags.includes(trimmedTag)) { setNewTags([...newTags, trimmedTag]); setTagInput(''); } };
   const handleTagInputKeyDown = (e) => { if (!e.nativeEvent.isComposing && e.key === 'Enter') { e.preventDefault(); handleAddTag(); } };
   const handleRemoveTag = (tagToRemove) => { setNewTags(newTags.filter(tag => tag !== tagToRemove)); };
+  
   const handleAdd = (e) => {
     e.preventDefault();
     if (newConversationTitle.trim()) {
-      onAddConversation(pairId, { title: newConversationTitle.trim(), tags: newTags });
+      onAddConversation(pairData.id, { title: newConversationTitle.trim(), tags: newTags });
       setNewConversationTitle('');
       setNewTags([]);
       setTagInput('');
     }
   };
 
-  const handleContextMenu = (e, convoId) => { e.preventDefault(); setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, convoId }); };
+  const handleContextMenu = (e, item, type) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, item, type });
+  };
   const handleCloseContextMenu = () => setContextMenu({ ...contextMenu, isOpen: false });
+
+  const { folders = [], conversations = [] } = pairData;
+
+  const getContextMenuItems = () => {
+    const { item, type } = contextMenu;
+    if (!item) return [];
+
+    if (type === 'conversation') {
+      const moveToFolderSubmenu = folders.map(folder => ({
+        label: folder.name,
+        action: () => onMoveConversationToFolder(item.id, folder.id)
+      }));
+
+      if (item.folderId) {
+        moveToFolderSubmenu.push({ isSeparator: true });
+        moveToFolderSubmenu.push({ label: '루트로 이동', action: () => onMoveConversationToFolder(item.id, null) });
+      }
+
+      return [
+        { label: '수정', action: () => onEditConversation(item.id) },
+        { label: '폴더로 이동', submenu: moveToFolderSubmenu },
+        { isSeparator: true },
+        { label: '삭제', className: 'delete', action: () => { if (window.confirm("정말로 이 대화를 삭제하시겠습니까?")) { onDeleteConversation(item.id); } } },
+      ];
+    }
+
+    if (type === 'folder') {
+      return [
+        { label: '이름 변경', action: () => onRenameFolder(item.id) },
+        { isSeparator: true },
+        { label: '삭제', className: 'delete', action: () => { if (window.confirm("폴더를 삭제하시겠습니까? (내부의 대화는 루트로 이동됩니다)")) { onDeleteFolder(item.id); } } },
+      ];
+    }
+    return [];
+  };
+
+  const structuredItems = useMemo(() => {
+    const sortedFolders = [...folders].sort((a, b) => a.order - b.order);
+    const sortedConversations = [...conversations].sort((a, b) => a.order - b.order);
+
+    const itemsByFolder = sortedConversations.reduce((acc, convo) => {
+      const folderId = convo.folderId || 'root';
+      if (!acc[folderId]) acc[folderId] = [];
+      acc[folderId].push(convo);
+      return acc;
+    }, {});
+
+    const structured = sortedFolders.map(folder => ({
+      ...folder,
+      type: 'folder',
+      conversations: itemsByFolder[folder.id] || []
+    }));
+    
+    structured.push(...(itemsByFolder['root'] || []).map(c => ({...c, type: 'conversation'})));
+    
+    return structured;
+  }, [folders, conversations]);
   
-  const contextMenuItems = [
-    { label: '수정', action: () => onEditConversation(contextMenu.convoId) },
-    { isSeparator: true },
-    { label: '삭제', className: 'delete', action: () => { if (window.confirm("정말로 이 대화를 삭제하시겠습니까?")) { onDeleteConversation(contextMenu.convoId); } } },
-  ];
+  const handleDragStart = (e, item, type) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ id: item.id, type }));
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedItem({ id: item.id, type });
+  };
+  
+  const handleDragOver = (e, item, type) => {
+    e.preventDefault();
+    if (draggedItem) {
+      if (type === 'folder' && draggedItem.type === 'conversation' && draggedItem.id !== item.id) {
+        setDragOverItem({ id: item.id, type: 'folder' });
+      } else {
+        setDragOverItem(null);
+      }
+    }
+  };
+  
+  // ▼▼▼ [핵심 수정] dropTargetItem이 null일 경우를 처리하여 오류 방지 ▼▼▼
+  const handleDrop = (e, dropTargetItem, dropTargetType) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dragItemData = JSON.parse(e.dataTransfer.getData('application/json'));
+    const dropTarget = {
+      id: dropTargetItem ? dropTargetItem.id : null,
+      type: dropTargetType
+    };
+    onReorderItems(dragItemData, dropTarget);
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+  
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const renderConversation = (convo) => (
+    <li
+      key={convo.id}
+      className={`conversation-item ${convo.id === selectedConversationId ? 'selected' : ''} ${draggedItem?.id === convo.id ? 'dragging' : ''}`}
+      onClick={() => onSelectConversation(convo.id)}
+      onContextMenu={(e) => handleContextMenu(e, convo, 'conversation')}
+      draggable="true"
+      onDragStart={(e) => handleDragStart(e, convo, 'conversation')}
+      onDrop={(e) => handleDrop(e, convo, 'conversation')}
+      onDragOver={(e) => e.preventDefault()}
+      onDragEnd={handleDragEnd}
+    >
+      <span className="conversation-item-title">{convo.title}</span>
+      {(convo.tags || []).length > 0 && (
+        <div className="conversation-item-tags">
+          {(convo.tags || []).map((tag, index) => ( <span key={index} className="tag-pill-small">{tag}</span> ))}
+        </div>
+      )}
+    </li>
+  );
 
   return (
     <div className="conversation-list-container">
@@ -742,51 +884,56 @@ const ConversationList = ({
           />
           <div className="tag-input-area">
             <div className="tag-input-container">
-              <input 
-                type="text" 
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={handleTagInputKeyDown}
-                placeholder="태그 입력 후 Enter 또는 추가"
-              />
-              <button type="button" onClick={handleAddTag} title="태그 추가">
-                <i className="fas fa-plus"></i>
-              </button>
+              <input type="text" value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagInputKeyDown} placeholder="태그 입력 후 Enter 또는 추가" />
+              <button type="button" onClick={handleAddTag} title="태그 추가"><i className="fas fa-plus"></i></button>
             </div>
             <div className="tags-preview">
               {(newTags || []).map((tag, index) => (
-                <div key={index} className="tag-item-small">
-                  {tag}
-                  <button type="button" onClick={() => handleRemoveTag(tag)}>&times;</button>
-                </div>
+                <div key={index} className="tag-item-small">{tag}<button type="button" onClick={() => handleRemoveTag(tag)}>&times;</button></div>
               ))}
             </div>
           </div>
-          <button type="submit" title="새 로그 추가하기">
-            <i className="fas fa-check"></i> 추가하기
-          </button>
+          <button type="submit" title="새 로그 추가하기"><i className="fas fa-check"></i> 추가하기</button>
         </form>
       </div>
       
-      <ul className="conversation-list">
-        {(conversations || []).map((convo) => (
-          <li
-            key={convo.id}
-            className={`conversation-item ${convo.id === selectedConversationId ? 'selected' : ''}`}
-            onClick={() => onSelectConversation(convo.id)}
-            onContextMenu={(e) => handleContextMenu(e, convo.id)}
-          >
-            <span className="conversation-item-title">{convo.title}</span>
-            {(convo.tags || []).length > 0 && (
-              <div className="conversation-item-tags">
-                {(convo.tags || []).map((tag, index) => ( <span key={index} className="tag-pill-small">{tag}</span> ))}
+      <ul className="conversation-list" onDrop={(e) => handleDrop(e, null, 'root')} onDragOver={(e) => e.preventDefault()}>
+        {structuredItems.map(item => {
+          if (item.type === 'folder') {
+            const isCollapsed = collapsedFolders[item.id];
+            return (
+              <div key={item.id} className="folder-item">
+                <div 
+                  className={`folder-header ${isCollapsed ? 'collapsed' : ''} ${draggedItem?.id === item.id ? 'dragging' : ''} ${dragOverItem?.id === item.id ? 'drag-over' : ''}`}
+                  onClick={() => setCollapsedFolders(prev => ({...prev, [item.id]: !prev[item.id]}))}
+                  onContextMenu={(e) => handleContextMenu(e, item, 'folder')}
+                  draggable="true"
+                  onDragStart={(e) => handleDragStart(e, item, 'folder')}
+                  onDrop={(e) => handleDrop(e, item, 'folder')}
+                  onDragOver={(e) => handleDragOver(e, item, 'folder')}
+                  onDragLeave={() => setDragOverItem(null)}
+                  onDragEnd={handleDragEnd}
+                >
+                  <i className="fas fa-chevron-down folder-toggle-icon"></i>
+                  <span className="folder-name">{item.name}</span>
+                </div>
+                {!isCollapsed && (
+                  <ul className="folder-content">
+                    {item.conversations.map(renderConversation)}
+                  </ul>
+                )}
               </div>
-            )}
-          </li>
-        ))}
+            );
+          }
+          return renderConversation(item);
+        })}
       </ul>
 
-      {contextMenu.isOpen && ( <ContextMenu position={contextMenu.position} onClose={handleCloseContextMenu} items={contextMenuItems.map(item => ({...item, action: () => { if(item.action) item.action(); handleCloseContextMenu(); }}))} /> )}
+      <div className="conversation-list-footer">
+        <button className="add-folder-btn" onClick={onAddFolder}>+ 새 폴더</button>
+      </div>
+
+      {contextMenu.isOpen && ( <ContextMenu position={contextMenu.position} onClose={handleCloseContextMenu} items={getContextMenuItems().map(item => ({...item, action: () => { if(item.action) item.action(); handleCloseContextMenu(); }}))} /> )}
     </div>
   );
 };
@@ -930,13 +1077,37 @@ export default CustomSlider;
 
 // 파일: src/components/Dashboard.js (수정 완료)
 
-import React from 'react';
+import React, { useState } from 'react';
 import ConversationCard from './ConversationCard';
 
-// onContextMenu prop을 추가로 받도록 수정
-const Dashboard = ({ logs, onSelectLog, onOpenAddLogModal, bgColor, onContextMenu }) => {
+// onContextMenu, onReorder prop을 추가로 받도록 수정
+const Dashboard = ({ logs, onSelectLog, onOpenAddLogModal, bgColor, onContextMenu, onReorder }) => {
+  const [draggedItemId, setDraggedItemId] = useState(null);
+  
   const dashboardStyle = {
     backgroundColor: bgColor || '#1a1a1a',
+  };
+
+  // ▼▼▼ NEW: 드래그 앤 드롭 이벤트 핸들러들 ▼▼▼
+  const handleDragStart = (e, id) => {
+    setDraggedItemId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault(); // 필수: drop 이벤트를 허용하기 위함
+  };
+
+  const handleDrop = (e, targetId) => {
+    e.preventDefault();
+    if (draggedItemId && draggedItemId !== targetId) {
+      onReorder(draggedItemId, targetId);
+    }
+    setDraggedItemId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItemId(null);
   };
 
   return (
@@ -947,8 +1118,14 @@ const Dashboard = ({ logs, onSelectLog, onOpenAddLogModal, bgColor, onContextMen
             key={log.id}
             log={log}
             onSelect={onSelectLog}
-            // ▼▼▼ NEW ▼▼▼: 우클릭 이벤트를 부모에게 전달
             onContextMenu={(e) => onContextMenu(e, log.id)}
+            // ▼▼▼ NEW: 드래그 앤 드롭 관련 props와 상태 전달 ▼▼▼
+            draggable="true"
+            onDragStart={(e) => handleDragStart(e, log.id)}
+            onDragOver={handleDragOver}
+            onDrop={(e) => handleDrop(e, log.id)}
+            onDragEnd={handleDragEnd}
+            isDragging={draggedItemId === log.id}
           />
         ))}
         <div className="add-log-card" onClick={onOpenAddLogModal}>
@@ -968,7 +1145,7 @@ export default Dashboard;
 
 // File: src/components/DataImportModal.js
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import SettingsModal from './SettingsModal';
 import * as XLSX from 'xlsx';
 
@@ -978,10 +1155,26 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  // ▼▼▼ NEW: 선택된 버전을 관리할 상태 추가 ▼▼▼
+  const [selectedVersions, setSelectedVersions] = useState({ me: null, other: null });
 
   const characterNameMap = {
     me: characters?.me?.[0]?.name || 'A 캐릭터',
     other: characters?.other?.[0]?.name || 'B 캐릭터',
+  };
+  
+  // ▼▼▼ NEW: 모달이 열리거나 캐릭터 정보가 바뀔 때 선택된 버전을 초기화 ▼▼▼
+  useEffect(() => {
+    if (isOpen && characters) {
+      setSelectedVersions({
+        me: characters.me?.[0]?.id || null,
+        other: characters.other?.[0]?.id || null,
+      });
+    }
+  }, [isOpen, characters]);
+
+  const handleVersionChange = (key, versionId) => {
+    setSelectedVersions(prev => ({ ...prev, [key]: versionId }));
   };
 
   const resetState = () => {
@@ -1009,20 +1202,19 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
 
       if (!content) return null;
 
-      let sender, characterKey;
+      let sender, characterVersionId;
       if (speakerName === characterNameMap.me) {
         sender = 'Me';
-        characterKey = 'me';
+        // ▼▼▼ NEW: 상태에서 선택된 버전 ID 사용 ▼▼▼
+        characterVersionId = selectedVersions.me;
       } else if (speakerName === characterNameMap.other) {
         sender = 'Other';
-        characterKey = 'other';
+        // ▼▼▼ NEW: 상태에서 선택된 버전 ID 사용 ▼▼▼
+        characterVersionId = selectedVersions.other;
       } else {
         sender = 'Other';
-        characterKey = 'other';
+        characterVersionId = selectedVersions.other;
       }
-
-      const versions = characters[characterKey] || [];
-      const characterVersionId = versions.length > 0 ? versions[0].id : null;
 
       return {
         type: 'text',
@@ -1152,6 +1344,29 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
       setIsLoading(false);
     }
   };
+  
+  const renderImportOptions = () => (
+    <>
+      <p className="import-instruction">
+        파일의 화자 이름(`{characterNameMap.me}`, `{characterNameMap.other}`)을 아래 캐릭터에 매칭합니다. <br/>
+        각 캐릭터에 적용할 프로필 버전을 선택해주세요.
+      </p>
+      <div className="import-character-version-selectors">
+        <div className="form-group">
+            <label>{characterNameMap.me}</label>
+            <select value={selectedVersions.me || ''} onChange={(e) => handleVersionChange('me', e.target.value)} disabled={!characters.me || characters.me.length === 0}>
+                {(characters.me || []).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+        </div>
+        <div className="form-group">
+            <label>{characterNameMap.other}</label>
+            <select value={selectedVersions.other || ''} onChange={(e) => handleVersionChange('other', e.target.value)} disabled={!characters.other || characters.other.length === 0}>
+                {(characters.other || []).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -1161,15 +1376,11 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
             <button className={sourceType === 'txt' ? 'active' : ''} onClick={() => setSourceType('txt')}>TXT 파일</button>
             <button className={sourceType === 'excel' ? 'active' : ''} onClick={() => setSourceType('excel')}>Excel 파일</button>
             <button className={sourceType === 'google' ? 'active' : ''} onClick={() => setSourceType('google')}>Google Sheets</button>
-            {/* [제거 완료] 트위터 탭 버튼이 삭제되었습니다. */}
           </div>
 
           {sourceType === 'txt' && (
             <div className="import-content form-card">
-              <p className="import-instruction">
-                `[화자명] 내용` 형식의 텍스트 파일을 선택하세요.<br/>
-                예: `[{characterNameMap.me}] 안녕하세요.`
-              </p>
+              {renderImportOptions()}
               <button className="btn-secondary" onClick={() => fileInputRef.current.click()} disabled={isLoading}>
                 TXT 파일 선택...
               </button>
@@ -1179,8 +1390,9 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
 
           {sourceType === 'excel' && (
             <div className="import-content form-card">
-              <p className="import-instruction">
-                첫 번째 행은 헤더(제목)입니다. A열에는 화자 이름, B열에는 내용이 있는 Excel(.xlsx) 파일을 선택하세요.
+              {renderImportOptions()}
+              <p className="import-instruction" style={{marginTop: '1rem'}}>
+                A열은 화자, B열은 내용으로 구성된 Excel 파일을 선택하세요.
               </p>
               <button className="btn-secondary" onClick={() => fileInputRef.current.click()} disabled={isLoading}>
                 Excel 파일 선택...
@@ -1191,7 +1403,8 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
           
           {sourceType === 'google' && (
             <div className="import-content form-card">
-              <p className="import-instruction">
+              {renderImportOptions()}
+              <p className="import-instruction" style={{marginTop: '1rem'}}>
                 1. Google 스프레드시트 우상단 **[공유]** 버튼 클릭<br/>
                 2. 일반 액세스 설정을 **'링크가 있는 모든 사용자'**로 변경<br/>
                 3. **[링크 복사]**를 눌러 나온 주소를 아래에 붙여넣으세요.
@@ -1209,8 +1422,6 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
             </div>
           )}
 
-          {/* [제거 완료] 트위터 관련 UI가 모두 삭제되었습니다. */}
-
           {isLoading && <div className="import-status">데이터를 불러오는 중...</div>}
           {error && <div className="import-status error">{error}</div>}
         </div>
@@ -1220,6 +1431,103 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
 };
 
 export default DataImportModal;
+
+
+// ======================================================
+// File: src\components\FolderSettingsModal.js
+// ======================================================
+
+// 파일: src/components/FolderSettingsModal.js (새 파일)
+
+import React, { useState, useEffect } from 'react';
+import SettingsModal from './SettingsModal';
+
+const FolderSettingsModal = ({ isOpen, onClose, folderData, onSave }) => {
+  const [name, setName] = useState('');
+  const [tags, setTags] = useState([]);
+  const [tagInput, setTagInput] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setName(folderData?.name || '');
+      setTags(folderData?.tags || []);
+      setTagInput('');
+    }
+  }, [isOpen, folderData]);
+
+  const handleAddTag = () => {
+    const trimmedTag = tagInput.trim();
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag]);
+      setTagInput('');
+    }
+  };
+
+  const handleTagInputKeyDown = (e) => {
+    if (!e.nativeEvent.isComposing && e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) {
+      alert('폴더 이름을 입력해주세요.');
+      return;
+    }
+    onSave({ name, tags });
+    onClose();
+  };
+
+  const isEditing = !!folderData?.id;
+
+  return (
+    <SettingsModal isOpen={isOpen} onClose={onClose} title={isEditing ? "폴더 수정" : "새 폴더 생성"}>
+      <form onSubmit={handleSubmit} className="utility-panel">
+        <div className="form-card">
+          <label htmlFor="folder-name" className="card-label">폴더 이름</label>
+          <input
+            id="folder-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="폴더의 이름을 입력하세요"
+            required
+          />
+        </div>
+        <div className="form-card">
+          <label className="card-label">태그 (선택)</label>
+          <div className="tag-input-container">
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={handleTagInputKeyDown}
+              placeholder="태그 입력 후 Enter 또는 추가"
+            />
+            <button type="button" onClick={handleAddTag}>+</button>
+          </div>
+          <div className="tags-list">
+            {(tags || []).map((tag, index) => (
+              <div key={index} className="tag-item">
+                {tag}
+                <button type="button" onClick={() => handleRemoveTag(tag)}>&times;</button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <button type="submit" className="btn-primary">{isEditing ? '저장하기' : '생성하기'}</button>
+      </form>
+    </SettingsModal>
+  );
+};
+
+export default FolderSettingsModal;
 
 
 // ======================================================
@@ -1631,7 +1939,7 @@ export default Message;
 // File: src\components\MessageView.js
 // ======================================================
 
-// File: src/components/MessageView.js (수정 완료)
+// File: src/components/MessageView.js
 
 import React, { useState, useEffect, useRef } from 'react';
 import Message from './Message';
@@ -1639,21 +1947,24 @@ import Sticker from './Sticker';
 import TiptapEditor from './TiptapEditor';
 import StickerEffectsModal from './StickerEffectsModal';
 
-const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUpdateStickers, onAvatarClick, scrollToMessageId, onScrollComplete, onSetComment }) => {
+const MessageView = ({ 
+    log, characters, onAddMessage, onMessageContextMenu, onUpdateStickers, onAvatarClick, 
+    scrollToMessageId, onScrollComplete, onSetComment,
+    // ▼▼▼ [신규] 스티커 관련 핸들러 수신 ▼▼▼
+    onStickerContextMenu, onOpenStickerEditor 
+}) => {
   const [sender, setSender] = useState('me');
   const [text, setText] = useState('');
   const [selectedStickerId, setSelectedStickerId] = useState(null);
   const messageListRef = useRef(null);
   const fileInputRef = useRef(null);
   
-  // ▼▼▼ [신규] 프로필 버전 선택을 위한 상태 ▼▼▼
   const [selectedVersion, setSelectedVersion] = useState({ me: null, other: null });
 
   const [isFxModalOpen, setIsFxModalOpen] = useState(false);
   const [editingSticker, setEditingSticker] = useState(null);
   const originalStickerData = useRef(null);
 
-  // ▼▼▼ [수정] 캐릭터 데이터가 변경되면 선택된 버전을 초기화 ▼▼▼
   useEffect(() => {
     if (characters) {
       const meVersions = Array.isArray(characters.me) ? characters.me : [];
@@ -1675,7 +1986,6 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
     tempDiv.innerHTML = text; 
     if (tempDiv.textContent.trim()) { 
       const formattedSender = sender === 'me' ? 'Me' : 'Other'; 
-      // ▼▼▼ [수정] 메시지 데이터에 characterVersionId 추가 ▼▼▼
       const versionId = selectedVersion[sender];
       onAddMessage({ type: 'text', sender: formattedSender, text, characterVersionId: versionId }); 
       setText(''); 
@@ -1686,7 +1996,6 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
     const file = e.target.files[0]; 
     if (file) { 
       const formattedSender = sender === 'me' ? 'Me' : 'Other'; 
-      // ▼▼▼ [수정] 파일 메시지에도 characterVersionId 추가 ▼▼▼
       const versionId = selectedVersion[sender];
       onAddMessage({ type: 'file', sender: formattedSender, file, characterVersionId: versionId }); 
     } 
@@ -1740,7 +2049,6 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
       return sticker;
   });
   
-  // ▼▼▼ [신규] 렌더링에 필요한 캐릭터 버전 목록 ▼▼▼
   const meVersions = Array.isArray(characters.me) ? characters.me : [];
   const otherVersions = Array.isArray(characters.other) ? characters.other : [];
 
@@ -1749,7 +2057,6 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
       <div className="message-view-content">
         <div className="message-list" ref={messageListRef} onClick={handleBackgroundClick}>
           {(log.messages || []).map((msg) => {
-            // ▼▼▼ [수정] Message 컴포넌트에 올바른 props 전달 ▼▼▼
             const isMe = msg.sender === 'Me' || msg.sender === 'me';
             const characterVersions = isMe ? meVersions : otherVersions;
             return <Message 
@@ -1771,6 +2078,9 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
               isSelected={sticker.id === selectedStickerId} 
               onSelect={setSelectedStickerId}
               onOpenFxModal={handleOpenFxModal}
+              // ▼▼▼ [신규] 스티커 관련 핸들러 전달 ▼▼▼
+              onContextMenu={onStickerContextMenu}
+              onOpenStickerEditor={onOpenStickerEditor}
             />
           ))}
         </div>
@@ -1782,7 +2092,6 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
             <option value="me">{meVersions[0]?.name || 'A 캐릭터'}</option>
             <option value="other">{otherVersions[0]?.name || 'B 캐릭터'}</option>
           </select>
-          {/* ▼▼▼ [신규] 프로필 버전 선택 드롭다운 ▼▼▼ */}
           <select 
             value={selectedVersion[sender] || ''} 
             onChange={(e) => setSelectedVersion(prev => ({...prev, [sender]: e.target.value}))}
@@ -1797,7 +2106,6 @@ const MessageView = ({ log, characters, onAddMessage, onMessageContextMenu, onUp
         <div className="editor-container"> <TiptapEditor content={text} onUpdate={setText} placeholder="메시지 입력..." onSetComment={onSetComment}/> </div>
         <button type="submit">전송</button>
       </form>
-      {/* ▼▼▼ [수정] 파일 첨부 시 GIF 포함 ▼▼▼ */}
       <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*,video/*,image/gif" onChange={handleFileChange} />
 
       <StickerEffectsModal 
@@ -2255,11 +2563,11 @@ export default SettingsModal;
 // File: src\components\SettingsPanel.js
 // ======================================================
 
-// 파일: src/components/SettingsPanel.js (수정 완료)
+// 파일: src/components/SettingsPanel.js
 
 import React from 'react';
 import ThemeEditor from './ThemeEditor';
-import CustomSlider from './CustomSlider'; // ▼▼▼ CustomSlider import
+import CustomSlider from './CustomSlider';
 
 const globalThemeOptions = [
   { key: 'titleBarBg', label: '상단 타이틀 바 색상', group: 'colors' },
@@ -2275,10 +2583,26 @@ const SettingsPanel = ({
   fontSize,
   onFontSizeChange,
   letterSpacing,
-  onLetterSpacingChange
+  onLetterSpacingChange,
+  // ▼▼▼ [추가] 타이틀 바 관련 props 수신 ▼▼▼
+  titleBarText,
+  onTitleBarTextChange,
 }) => {
   return (
     <div className="settings-panel">
+      {/* ▼▼▼ [추가] 전역 UI 설정 섹션 ▼▼▼ */}
+      <div className="settings-section">
+        <h3 className="settings-title">전역 UI 설정</h3>
+        <label htmlFor="title-bar-text-input">타이틀 바 텍스트</label>
+        <input
+          id="title-bar-text-input"
+          type="text"
+          value={titleBarText}
+          onChange={(e) => onTitleBarTextChange(e.target.value)}
+          className="settings-input"
+        />
+      </div>
+
       <div className="settings-section">
         <h3 className="settings-title">폰트 설정</h3>
         <label htmlFor="font-select">에디터 폰트</label>
@@ -2303,7 +2627,6 @@ const SettingsPanel = ({
         <div className="font-control-group">
           <label htmlFor="font-size-slider">폰트 크기</label>
           <div className="slider-container">
-            {/* ▼▼▼ input을 CustomSlider로 교체 ▼▼▼ */}
             <CustomSlider
               id="font-size-slider"
               min="12" max="20" step="0.5"
@@ -2342,12 +2665,16 @@ export default SettingsPanel;
 // File: src\components\Sticker.js
 // ======================================================
 
-// File: src/components/Sticker.js (수정 완료)
+// File: src/components/Sticker.js
 
 import React, { useEffect, useRef, useState } from 'react';
 import IndexedDBImage from './IndexedDBImage';
 
-const Sticker = ({ stickerData, onUpdate, onDelete, isSelected, onSelect, onOpenFxModal }) => {
+const Sticker = ({ 
+    stickerData, onUpdate, onDelete, isSelected, onSelect, onOpenFxModal,
+    // ▼▼▼ [신규] 이벤트 핸들러 수신 ▼▼▼
+    onContextMenu, onOpenStickerEditor
+}) => {
   const stickerRef = useRef(null);
   const [stickerImageUrl, setStickerImageUrl] = useState(null);
   const interactionState = useRef({ type: null, initialData: null, finalData: null, startMouse: { x: 0, y: 0 }, startAngle: 0, startDistance: 1 });
@@ -2356,10 +2683,23 @@ const Sticker = ({ stickerData, onUpdate, onDelete, isSelected, onSelect, onOpen
   const handleInteractionStart = (e, type) => { e.preventDefault(); e.stopPropagation(); onSelect(stickerData.id); if (!stickerRef.current) return; const state = interactionState.current; state.type = type; state.initialData = { ...stickerData }; const stickerRect = stickerRef.current.getBoundingClientRect(); const center = { x: stickerRect.left + stickerRect.width / 2, y: stickerRect.top + stickerRect.height / 2, }; state.startMouse = { x: e.clientX, y: e.clientY }; const dx = e.clientX - center.x; const dy = e.clientY - center.y; if (type === 'rotate') { state.startAngle = Math.atan2(dy, dx) * (180 / Math.PI); } else if (type === 'resize') { state.startDistance = Math.sqrt(dx * dx + dy * dy); } window.addEventListener('mousemove', handleInteractionMove); window.addEventListener('mouseup', handleInteractionEnd); };
   const handleInteractionMove = (e) => { e.preventDefault(); const state = interactionState.current; const stickerEl = stickerRef.current; if (!state.type || !state.initialData || !stickerEl) return; let newData = { ...state.initialData }; if (state.type === 'drag') { const dx = e.clientX - state.startMouse.x; const dy = e.clientY - state.startMouse.y; newData.x = state.initialData.x + dx; newData.y = state.initialData.y + dy; stickerEl.style.left = `${newData.x}px`; stickerEl.style.top = `${newData.y}px`; } else { const stickerRect = stickerEl.getBoundingClientRect(); const center = { x: stickerRect.left + stickerRect.width / 2, y: stickerRect.top + stickerRect.height / 2, }; const dx = e.clientX - center.x; const dy = e.clientY - center.y; if (state.type === 'resize') { const currentDistance = Math.sqrt(dx * dx + dy * dy); const scaleRatio = currentDistance / state.startDistance; newData.width = Math.max(30, state.initialData.width * scaleRatio); stickerEl.style.width = `${newData.width}px`; } else if (state.type === 'rotate') { const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI); const angleDelta = currentAngle - state.startAngle; newData.rotate = state.initialData.rotate + angleDelta; stickerEl.style.transform = `rotate(${newData.rotate}deg)`; } } state.finalData = newData; };
   const handleInteractionEnd = () => { const state = interactionState.current; if (state.finalData) { onUpdate(state.finalData); } Object.assign(state, { type: null, initialData: null, finalData: null, startMouse: { x: 0, y: 0 }, startAngle: 0, startDistance: 1, }); window.removeEventListener('mousemove', handleInteractionMove); window.removeEventListener('mouseup', handleInteractionEnd); };
-  const handleContextMenu = (e) => { e.preventDefault(); if (window.confirm('이 스티커를 삭제하시겠습니까?')) { onDelete(stickerData.id); } };
+  
+  // ▼▼▼ [수정] onContextMenu prop을 직접 호출하도록 변경 ▼▼▼
+  const handleContextMenu = (e) => {
+    if (onContextMenu) {
+      onContextMenu(e, stickerData);
+    }
+  };
+  
+  // ▼▼▼ [신규] 더블클릭 핸들러 추가 ▼▼▼
+  const handleDoubleClick = () => {
+    if (stickerData.isTextSticker && onOpenStickerEditor) {
+      onOpenStickerEditor(stickerData);
+    }
+  };
+
   const handleFxClick = (e) => { e.stopPropagation(); onOpenFxModal(stickerData); };
 
-  // ▼▼▼ [수정] 테두리/둥글기 CSS 변수 생성 로직 복원 ▼▼▼
   const generateEffectStyles = () => {
     const effects = stickerData.effects || {};
     const styles = {};
@@ -2391,7 +2731,6 @@ const Sticker = ({ stickerData, onUpdate, onDelete, isSelected, onSelect, onOpen
       styles['--gradient-overlay'] = 'none';
     }
     
-    // ▼▼▼ [복원] 텍스트 스티커가 아닐 때만 테두리/둥글기 CSS 변수 생성 ▼▼▼
     if (!stickerData.isTextSticker) {
       const border = effects.border || {};
       if (border.enabled) {
@@ -2404,7 +2743,6 @@ const Sticker = ({ stickerData, onUpdate, onDelete, isSelected, onSelect, onOpen
       const borderRadius = effects.borderRadius || {};
       styles['--border-radius'] = `${borderRadius.value || 0}px`;
     } else {
-      // 텍스트 스티커는 CSS 테두리/둥글기를 사용하지 않음
       styles['--border-width'] = '0px';
       styles['--border-radius'] = '0px';
     }
@@ -2429,9 +2767,10 @@ const Sticker = ({ stickerData, onUpdate, onDelete, isSelected, onSelect, onOpen
         ...generateEffectStyles(),
       }}
       onMouseDown={(e) => handleInteractionStart(e, 'drag')}
+      // ▼▼▼ [수정] 이벤트 핸들러 연결 ▼▼▼
       onContextMenu={handleContextMenu}
+      onDoubleClick={handleDoubleClick}
     >
-      {/* ▼▼▼ [수정] 렌더링 구조 복원 (텍스트/이미지 스티커 공용) ▼▼▼ */}
       <div className="sticker-border-container">
         <div className="sticker-image-container">
           <IndexedDBImage 
@@ -2441,7 +2780,6 @@ const Sticker = ({ stickerData, onUpdate, onDelete, isSelected, onSelect, onOpen
           />
         </div>
       </div>
-      {/* ▲▲▲ */}
 
       {isSelected && (
         <>
@@ -2642,17 +2980,17 @@ export default StickerEffectsModal;
 
 // File: src/components/TextStickerModal.js
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import SettingsModal from './SettingsModal';
 import CustomSlider from './CustomSlider';
 
-const FONT_OPTIONS = [
-  "'Paperozi', sans-serif",
-  "'Presentation', sans-serif",
-  "'Noto Sans KR', sans-serif",
-  "Arial, sans-serif",
-  "'Courier New', monospace",
-  "'Comic Sans MS', cursive",
+const WEB_FONT_OPTIONS = [
+  { name: '페이퍼로지', value: "'Paperozi', sans-serif" },
+  { name: '프리젠테이션', value: "'Presentation', sans-serif" },
+  { name: 'Noto Sans KR', value: "'Noto Sans KR', sans-serif" },
+  { name: 'Arial', value: "Arial, sans-serif" },
+  { name: 'Courier New', value: "'Courier New', monospace" },
+  { name: 'Comic Sans MS', value: "'Comic Sans MS', cursive" },
 ];
 
 const dataURLtoBlob = (dataurl) => {
@@ -2680,10 +3018,37 @@ function roundRect(ctx, x, y, width, height, radius) {
   return ctx;
 }
 
+function drawSpeechBubble(ctx, x, y, width, height, radius) {
+  const tailWidth = 20;
+  const tailHeight = 15;
+  
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  
+  ctx.lineTo(x + width / 2 + tailWidth / 2, y + height);
+  ctx.lineTo(x + width / 2, y + height + tailHeight);
+  ctx.lineTo(x + width / 2 - tailWidth / 2, y + height);
+  
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
 
-const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
+const hexToRgba = (hex, alpha) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? `rgba(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}, ${alpha})` : hex;
+};
+
+// ▼▼▼ [수정] Props 변경: onAdd -> onComplete, editingStickerData 추가 ▼▼▼
+const TextStickerModal = ({ isOpen, onClose, onComplete, availableFonts, editingStickerData = null }) => {
   const [text, setText] = useState('스티커 텍스트');
-  const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0]);
+  const [fontFamily, setFontFamily] = useState(WEB_FONT_OPTIONS[0].value);
   const [fontSize, setFontSize] = useState(48);
   const [fontWeight, setFontWeight] = useState(400);
   const [letterSpacing, setLetterSpacing] = useState(0);
@@ -2693,16 +3058,59 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
   const [backgroundColor, setBackgroundColor] = useState('#5865F2');
   const [isTransparent, setIsTransparent] = useState(false);
   const [borderRadius, setBorderRadius] = useState(20);
+  const [stickerStyle, setStickerStyle] = useState('default');
   const previewRef = useRef(null);
+  
+  // ▼▼▼ [신규] 수정 모드일 때 상태를 초기화하는 useEffect ▼▼▼
+  useEffect(() => {
+    if (isOpen) {
+      if (editingStickerData) {
+        // 수정 모드: 기존 데이터로 상태 설정
+        setText(editingStickerData.text || '스티커 텍스트');
+        setFontFamily(editingStickerData.fontFamily || WEB_FONT_OPTIONS[0].value);
+        setFontSize(editingStickerData.fontSize || 48);
+        setFontWeight(editingStickerData.fontWeight || 400);
+        setLetterSpacing(editingStickerData.letterSpacing || 0);
+        setTextColor(editingStickerData.textColor || '#FFFFFF');
+        setStrokeColor(editingStickerData.strokeColor || '#000000');
+        setStrokeWidth(editingStickerData.strokeWidth || 2);
+        setBackgroundColor(editingStickerData.backgroundColor || '#5865F2');
+        setIsTransparent(editingStickerData.isTransparent || false);
+        setBorderRadius(editingStickerData.borderRadius || 20);
+        setStickerStyle(editingStickerData.stickerStyle || 'default');
+      } else {
+        // 생성 모드: 기본값으로 상태 초기화
+        setText('스티커 텍스트');
+        setFontFamily(WEB_FONT_OPTIONS[0].value);
+        setFontSize(48);
+        setFontWeight(400);
+        setLetterSpacing(0);
+        setTextColor('#FFFFFF');
+        setStrokeColor('#000000');
+        setStrokeWidth(2);
+        setBackgroundColor('#5865F2');
+        setIsTransparent(false);
+        setBorderRadius(20);
+        setStickerStyle('default');
+      }
+    }
+  }, [isOpen, editingStickerData]);
 
-  const finalBackgroundColor = isTransparent ? 'transparent' : backgroundColor;
 
-  const handleCreate = async () => {
+  const getFinalBackgroundColor = () => {
+    if (isTransparent) return 'transparent';
+    if (stickerStyle === 'glass') return hexToRgba(backgroundColor, 0.6);
+    return backgroundColor;
+  }
+
+  // ▼▼▼ [수정] 함수 이름 변경: handleCreate -> handleComplete ▼▼▼
+  const handleComplete = async () => {
     if (!text.trim()) {
       alert('텍스트를 입력해주세요.');
       return;
     }
     
+    // ... (캔버스 생성 로직은 이전과 동일)
     const tempDiv = document.createElement('div');
     tempDiv.style.position = 'absolute';
     tempDiv.style.left = '-9999px';
@@ -2714,19 +3122,66 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
     const textMetrics = tempDiv.getBoundingClientRect();
     document.body.removeChild(tempDiv);
 
-    const padding = 20 + strokeWidth;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    
+    let padding = 20 + strokeWidth;
+    let canvasWidth, canvasHeight;
     const lines = text.split('\n');
     const lineHeight = textMetrics.height / lines.length;
-    canvas.width = textMetrics.width + padding * 2;
-    canvas.height = (lineHeight * lines.length) + padding * 2;
 
+    if (stickerStyle === 'speechBubble') {
+      canvasWidth = textMetrics.width + padding * 2;
+      canvasHeight = (lineHeight * lines.length) + padding * 2 + 15;
+    } else if (stickerStyle === 'macWindow') {
+      padding = Math.max(padding, 24);
+      canvasWidth = textMetrics.width + padding * 2;
+      canvasHeight = (lineHeight * lines.length) + padding * 2;
+    } else {
+      canvasWidth = textMetrics.width + padding * 2;
+      canvasHeight = (lineHeight * lines.length) + padding * 2;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+    
     if (!isTransparent) {
-      ctx.fillStyle = backgroundColor;
-      roundRect(ctx, 0, 0, canvas.width, canvas.height, borderRadius);
-      ctx.fill();
+        ctx.fillStyle = (stickerStyle === 'glass') ? hexToRgba(backgroundColor, 0.7) : backgroundColor;
+        switch (stickerStyle) {
+            case 'speechBubble':
+                drawSpeechBubble(ctx, 0, 0, canvas.width, canvas.height - 15, borderRadius);
+                ctx.fill();
+                break;
+            case 'glass':
+                roundRect(ctx, 0, 0, canvas.width, canvas.height, borderRadius);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                break;
+            case 'macWindow':
+            case 'default':
+            default:
+                roundRect(ctx, 0, 0, canvas.width, canvas.height, borderRadius);
+                ctx.fill();
+                break;
+        }
+    }
+    
+    if (stickerStyle === 'macWindow') {
+        const dotRadius = 6;
+        const dotY = 18;
+        ctx.fillStyle = '#FF5F56';
+        ctx.beginPath();
+        ctx.arc(20, dotY, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFBD2E';
+        ctx.beginPath();
+        ctx.arc(40, dotY, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#27C93F';
+        ctx.beginPath();
+        ctx.arc(60, dotY, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
     }
 
     ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
@@ -2735,7 +3190,9 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
     ctx.textBaseline = 'middle';
     
     const centerX = canvas.width / 2;
-    const startY = (canvas.height / 2) - (lineHeight * (lines.length - 1) / 2);
+    const textBlockHeight = lineHeight * lines.length;
+    const contentAreaHeight = stickerStyle === 'speechBubble' ? canvas.height - 15 : canvas.height;
+    const startY = (contentAreaHeight / 2) - (textBlockHeight / 2) + (lineHeight / 2);
 
     lines.forEach((line, index) => {
       const lineY = startY + (index * lineHeight);
@@ -2750,22 +3207,61 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
 
     const dataUrl = canvas.toDataURL('image/png');
     const blob = dataURLtoBlob(dataUrl);
-    onAdd(blob);
+
+    // ▼▼▼ [수정] 부모에게 전달할 데이터 객체 생성 ▼▼▼
+    // 이 객체는 스티커의 모든 속성을 포함하여 나중에 수정할 수 있도록 함
+    const stickerPayload = {
+        // 수정 모드인 경우 기존 데이터를 유지
+        ...(editingStickerData || {}),
+        
+        // 새로 생성 시 기본값 설정
+        id: editingStickerData?.id || `sticker_${Date.now()}`,
+        x: editingStickerData?.x || 100,
+        y: editingStickerData?.y || 100,
+        width: editingStickerData?.width || 150,
+        rotate: editingStickerData?.rotate || 0,
+        effects: editingStickerData?.effects || {
+            border: { enabled: false, color: '#FFFFFF', width: 2 },
+            shadow: { enabled: false, color: '#000000', blur: 5, offsetX: 2, offsetY: 2 },
+            gradient: { enabled: false, color: '#000000', intensity: 50 },
+            animation: { type: 'none' },
+            borderRadius: { value: 0 },
+        },
+        
+        // 공통 속성
+        isTextSticker: true,
+
+        // 텍스트 스티커 전용 속성 (현재 UI 상태)
+        text, fontFamily, fontSize, fontWeight, letterSpacing, textColor, 
+        strokeColor, strokeWidth, backgroundColor, isTransparent, borderRadius, stickerStyle,
+    };
+
+    onComplete(stickerPayload, blob);
     onClose();
   };
 
   return (
-    <SettingsModal isOpen={isOpen} onClose={onClose} title="텍스트 스티커 만들기">
+    <SettingsModal isOpen={isOpen} onClose={onClose} title={editingStickerData ? "텍스트 스티커 수정" : "텍스트 스티커 만들기"}>
       <div className="text-sticker-modal-content utility-panel">
         <div className="form-card">
           <label className="card-label">미리보기</label>
           <div 
-            className="text-sticker-preview" 
+            className={`text-sticker-preview ${stickerStyle}`}
             style={{ 
-              backgroundColor: finalBackgroundColor,
-              borderRadius: `${borderRadius}px`
+              backgroundColor: getFinalBackgroundColor(),
+              borderRadius: `${borderRadius}px`,
+              backdropFilter: stickerStyle === 'glass' ? 'blur(8px)' : 'none',
+              // ▼▼▼ [신규] CSS 변수를 이용해 말풍선 꼬리 색상 동적 변경 ▼▼▼
+              '--preview-bg-color': getFinalBackgroundColor(),
             }}
           >
+            {stickerStyle === 'macWindow' && (
+                <div className="mac-dots-container">
+                    <span className="mac-dot red"></span>
+                    <span className="mac-dot yellow"></span>
+                    <span className="mac-dot green"></span>
+                </div>
+            )}
             <span
               ref={previewRef}
               style={{
@@ -2781,6 +3277,16 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
               {text}
             </span>
           </div>
+        </div>
+
+        <div className="form-card">
+            <label className="card-label">배경 스타일</label>
+            <div className="sticker-style-selector">
+                <button className={`style-option-btn ${stickerStyle === 'default' ? 'active' : ''}`} onClick={() => setStickerStyle('default')}>기본</button>
+                <button className={`style-option-btn ${stickerStyle === 'macWindow' ? 'active' : ''}`} onClick={() => setStickerStyle('macWindow')}>macOS 창</button>
+                <button className={`style-option-btn ${stickerStyle === 'glass' ? 'active' : ''}`} onClick={() => setStickerStyle('glass')}>유리 효과</button>
+                <button className={`style-option-btn ${stickerStyle === 'speechBubble' ? 'active' : ''}`} onClick={() => setStickerStyle('speechBubble')}>말풍선</button>
+            </div>
         </div>
         
         <div className="form-card">
@@ -2798,9 +3304,18 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
           <div className="form-card">
             <label className="card-label">폰트 스타일</label>
             <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}>
-              {FONT_OPTIONS.map(font => (
-                <option key={font} value={font}>{font.split(',')[0].replace(/'/g, '')}</option>
-              ))}
+              <optgroup label="웹 폰트">
+                {WEB_FONT_OPTIONS.map(font => (
+                  <option key={font.value} value={font.value}>{font.name}</option>
+                ))}
+              </optgroup>
+              {availableFonts?.system && availableFonts.system.length > 0 && (
+                <optgroup label="내 컴퓨터 폰트">
+                  {availableFonts.system.map(font => (
+                    <option key={font} value={font}>{font}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <div className="slider-container">
               <CustomSlider min="12" max="128" step="1" value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} />
@@ -2849,7 +3364,9 @@ const TextStickerModal = ({ isOpen, onClose, onAdd }) => {
           </div>
         </div>
 
-        <button type="button" className="btn-primary" onClick={handleCreate}>생성하기</button>
+        <button type="button" className="btn-primary" onClick={handleComplete}>
+            {editingStickerData ? '수정하기' : '생성하기'}
+        </button>
       </div>
     </SettingsModal>
   );
@@ -3227,8 +3744,8 @@ export default TiptapEditor;
 import React from 'react';
 import './TitleBar.css';
 
-// onOpenSettings prop을 새로 받습니다.
-const TitleBar = ({ bgColor, onOpenSettings }) => {
+// ▼▼▼ [수정] titleText prop을 새로 받습니다. ▼▼▼
+const TitleBar = ({ bgColor, onOpenSettings, titleText }) => {
   const handleMinimize = () => window.electronAPI.minimize();
   const handleMaximize = () => window.electronAPI.maximize();
   const handleClose = () => window.electronAPI.close();
@@ -3241,17 +3758,15 @@ const TitleBar = ({ bgColor, onOpenSettings }) => {
     <div className="title-bar" style={titleBarStyle}>
       {/* 드래그 영역 */}
       <div className="title-bar-drag-region">
-        <div className="title-text">씹덕의 세계로 오라</div>
+        {/* ▼▼▼ [수정] 하드코딩된 텍스트를 prop으로 대체합니다. ▼▼▼ */}
+        <div className="title-text">{titleText}</div>
       </div>
 
       {/* 아이콘 버튼 영역 */}
       <div className="window-controls">
-        {/* ▼▼▼ 설정 버튼 추가 ▼▼▼ */}
         <button className="window-control-btn settings-btn" title="설정" onClick={onOpenSettings}>
           <i className="fas fa-cog"></i>
         </button>
-
-        {/* 기존 윈도우 조절 버튼 */}
         <button className="window-control-btn" id="minimize-btn" onClick={handleMinimize}>
           <svg x="0px" y="0px" viewBox="0 0 10.2 1"><rect x="0" y="0" width="10.2" height="1"></rect></svg>
         </button>
@@ -3295,6 +3810,8 @@ import ColorThief from 'colorthief';
 import { generateThemesFromPalette } from '../themeUtils';
 import ThemeSelectionModal from './ThemeSelectionModal';
 import { getMarkAttributes } from '@tiptap/core';
+import * as XLSX from 'xlsx';
+import FolderSettingsModal from './FolderSettingsModal';
 
 const dataURLtoBlob = (dataurl) => {
   const arr = dataurl.split(',');
@@ -3342,7 +3859,16 @@ const Workspace = ({
   onUpdateBackgroundImage, onAddSlideImage, onDeleteSlideImage, onUpdateCharacters,
   onUpdatePairDetails, onEditConversation, onDeleteConversation, onEditMessage,
   onAddMessageInBetween, onDeleteMessage, onUpdateStickers, onToggleBookmark,
-  onImportMessages
+  onImportMessages,
+  availableFonts,
+  onAddOrUpdateTextSticker,
+  onUpdateStickerOrder,
+  onDeleteSticker,
+  onAddFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onReorderItems,
+  onMoveConversationToFolder,
 }) => {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
@@ -3368,6 +3894,11 @@ const Workspace = ({
   
   const [isTextStickerModalOpen, setIsTextStickerModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  
+  const [editingSticker, setEditingSticker] = useState(null);
+
+  // ▼▼▼ NEW: 폴더 모달 상태 추가 ▼▼▼
+  const [editingFolder, setEditingFolder] = useState(null); // { id?, name?, tags?, isNew: boolean }
 
   const stickerInputRef = useRef(null);
 
@@ -3423,7 +3954,7 @@ const Workspace = ({
     setIsBookmarkPanelOpen(false);
   };
 
-  const addNewStickerToConversation = async (imageBlob, isTextSticker = false) => {
+  const addNewStickerToConversation = async (imageBlob) => {
     if (!selectedConversationId) return;
     try {
       const imageId = await db.images.add({ data: imageBlob });
@@ -3431,7 +3962,7 @@ const Workspace = ({
         id: `sticker_${Date.now()}`, 
         imageId: imageId, 
         x: 100, y: 100, width: 150, rotate: 0,
-        isTextSticker: isTextSticker,
+        isTextSticker: false,
         effects: {
           border: { enabled: false, color: '#FFFFFF', width: 2 },
           shadow: { enabled: false, color: '#000000', blur: 5, offsetX: 2, offsetY: 2 },
@@ -3452,14 +3983,26 @@ const Workspace = ({
   const handleStickerFileSelect = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      await addNewStickerToConversation(file, false);
+      await addNewStickerToConversation(file);
     }
     e.target.value = null;
   };
 
-  const handleAddTextSticker = async (stickerBlob) => {
-    await addNewStickerToConversation(stickerBlob, true);
+  const handleTextStickerComplete = (stickerData, blob) => {
+    if (!selectedConversationId) return;
+    onAddOrUpdateTextSticker(selectedConversationId, stickerData, blob);
+    handleCloseTextStickerModal();
   };
+
+  const handleOpenStickerEditor = (sticker) => {
+    setEditingSticker(sticker);
+    setIsTextStickerModalOpen(true);
+  };
+  
+  const handleCloseTextStickerModal = () => {
+    setIsTextStickerModalOpen(false);
+    setEditingSticker(null);
+  }
 
   const closeDialog = () => setDialogState({ isOpen: false, title: '', fields: [], onConfirm: () => {}, formData: {} });
 
@@ -3564,6 +4107,35 @@ const Workspace = ({
 
     setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, items: menuItems });
   };
+  
+  const handleStickerContextMenu = (e, sticker) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const menuItems = [
+      { label: '맨 앞으로 가져오기', action: () => onUpdateStickerOrder(selectedConversationId, sticker.id, 'front') },
+      { label: '맨 뒤로 보내기', action: () => onUpdateStickerOrder(selectedConversationId, sticker.id, 'back') },
+    ];
+    
+    if(sticker.isTextSticker) {
+      menuItems.push({ isSeparator: true });
+      menuItems.push({ label: '텍스트 수정', action: () => handleOpenStickerEditor(sticker) });
+    }
+
+    menuItems.push({ isSeparator: true });
+    menuItems.push({ 
+      label: '삭제', 
+      className: 'delete', 
+      action: () => {
+        if (window.confirm('이 스티커를 정말로 삭제하시겠습니까?')) {
+          onDeleteSticker(selectedConversationId, sticker.id);
+        }
+      } 
+    });
+
+    setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, items: menuItems });
+  };
+
 
   useEffect(() => {
     if (!dialogState.isOpen) return;
@@ -3621,6 +4193,87 @@ const Workspace = ({
     }
   };
   
+  const handleExport = async (fileType) => {
+    if (!selectedConversation) {
+      alert('내보낼 대화를 선택해주세요.');
+      return;
+    }
+
+    const getCharacterName = (sender, versionId) => {
+      const key = (sender === 'Me' || sender === 'me') ? 'me' : 'other';
+      const versions = pairData.characters[key] || [];
+      const version = versions.find(v => v.id === versionId);
+      return version ? version.name : (versions[0]?.name || (key === 'me' ? 'A 캐릭터' : 'B 캐릭터'));
+    };
+
+    const renderContent = (message) => {
+      switch (message.type) {
+        case 'image': return '[이미지]';
+        case 'video': return '[비디오]';
+        case 'embed': return `[링크: ${message.content.service}]`;
+        case 'link': return `[링크: ${message.content.url}]`;
+        case 'text':
+        default:
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = message.content || message.text || '';
+          return tempDiv.textContent || tempDiv.innerText || '';
+      }
+    };
+    
+    let blob;
+    let filename = `${selectedConversation.title.replace(/ /g, '_')}_export.${fileType}`;
+
+    if (fileType === 'txt') {
+      const content = selectedConversation.messages
+        .map(msg => `[${getCharacterName(msg.sender, msg.characterVersionId)}] ${renderContent(msg)}`)
+        .join('\n');
+      blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    } else if (fileType === 'xlsx') {
+      const data = selectedConversation.messages.map(msg => ({
+        '화자': getCharacterName(msg.sender, msg.characterVersionId),
+        '내용': renderContent(msg),
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '대화 내용');
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      blob = new Blob([wbout], { type: 'application/octet-stream' });
+    }
+
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // ▼▼▼ NEW: 폴더 관련 모달 핸들러들 ▼▼▼
+  const handleAddFolderRequest = () => {
+    setEditingFolder({ isNew: true, name: '', tags: [] });
+  };
+
+  const handleRenameFolderRequest = (folderId) => {
+    const folder = pairData.folders.find(f => f.id === folderId);
+    if (folder) {
+      setEditingFolder({ ...folder, isNew: false });
+    }
+  };
+
+  const handleSaveFolder = (folderData) => {
+    if (editingFolder?.isNew) {
+      onAddFolder(pairData.id, folderData);
+    } else {
+      onRenameFolder(pairData.id, editingFolder.id, folderData);
+    }
+    setEditingFolder(null);
+  };
+
+
   const selectedConversation = (pairData.conversations || []).find(c => c.id === selectedConversationId);
   const bookmarkedMessages = selectedConversation?.messages.filter(m => m.bookmarked) || [];
 
@@ -3646,7 +4299,23 @@ const Workspace = ({
 
   return (
     <div className="workspace-container" style={themeStyles}>
-      <ConversationList pairId={pairData.id} conversations={pairData.conversations} selectedConversationId={selectedConversationId} onSelectConversation={handleSelectConversation} onAddConversation={onAddConversation} slideImages={pairData.slideImages} onSelectSlideImage={handleSetAsBackground} onAddSlideImage={handleAddNewSlideImage} onDeleteSlideImage={(imageId) => onDeleteSlideImage(pairData.id, imageId)} onEditConversation={onEditConversation} onDeleteConversation={onDeleteConversation} />
+      <ConversationList 
+        pairData={pairData} 
+        selectedConversationId={selectedConversationId} 
+        onSelectConversation={handleSelectConversation} 
+        onAddConversation={onAddConversation} 
+        slideImages={pairData.slideImages} 
+        onSelectSlideImage={handleSetAsBackground} 
+        onAddSlideImage={handleAddNewSlideImage} 
+        onDeleteSlideImage={(imageId) => onDeleteSlideImage(pairData.id, imageId)} 
+        onEditConversation={onEditConversation} 
+        onDeleteConversation={onDeleteConversation}
+        onAddFolder={handleAddFolderRequest}
+        onRenameFolder={handleRenameFolderRequest}
+        onDeleteFolder={(folderId) => onDeleteFolder(pairData.id, folderId)}
+        onReorderItems={(dragItem, dropTarget) => onReorderItems(pairData.id, dragItem, dropTarget)}
+        onMoveConversationToFolder={(convoId, folderId) => onMoveConversationToFolder(pairData.id, convoId, folderId)}
+      />
       <div className="main-content-area">
         <header className="workspace-header">
           <button className="back-button" onClick={onGoToDashboard} title="대시보드로 돌아가기"><i className="fas fa-arrow-left"></i></button>
@@ -3663,6 +4332,12 @@ const Workspace = ({
             title="데이터 불러오기"
           >
             <i className="fas fa-file-import"></i>
+          </button>
+          <button className="theme-edit-btn" onClick={() => handleExport('txt')} disabled={!selectedConversationId} title="TXT로 내보내기">
+            <i className="fas fa-file-alt"></i>
+          </button>
+          <button className="theme-edit-btn" onClick={() => handleExport('xlsx')} disabled={!selectedConversationId} title="Excel로 내보내기">
+            <i className="fas fa-file-excel"></i>
           </button>
           <button 
             className="theme-edit-btn" 
@@ -3684,6 +4359,8 @@ const Workspace = ({
                 scrollToMessageId={scrollToMessageId}
                 onScrollComplete={() => setScrollToMessageId(null)}
                 onSetComment={handleSetCommentForNewMessage}
+                onStickerContextMenu={handleStickerContextMenu}
+                onOpenStickerEditor={handleOpenStickerEditor}
             /> 
         ) : ( <div className="placeholder">왼쪽에서 대화 로그를 선택하거나 새 로그를 추가하세요.</div> )}
       </div>
@@ -3709,8 +4386,10 @@ const Workspace = ({
       
       <TextStickerModal
         isOpen={isTextStickerModalOpen}
-        onClose={() => setIsTextStickerModalOpen(false)}
-        onAdd={handleAddTextSticker}
+        onClose={handleCloseTextStickerModal}
+        onComplete={handleTextStickerComplete}
+        availableFonts={availableFonts}
+        editingStickerData={editingSticker}
       />
       
       <DataImportModal
@@ -3727,6 +4406,14 @@ const Workspace = ({
       <PairSettingsModal isOpen={isPairSettingsModalOpen} onClose={() => setIsPairSettingsModalOpen(false)} pairData={pairData} onSave={(updatedDetails) => onUpdatePairDetails(pairData.id, updatedDetails)} />
       <ImageCropModal isOpen={isCropperOpen} onClose={handleCloseCropper} imageSrc={imageToCrop} onCropComplete={handleCropComplete} aspectRatio={cropAspectRatio} />
       
+      {/* ▼▼▼ NEW: 폴더 설정 모달 렌더링 ▼▼▼ */}
+      <FolderSettingsModal
+        isOpen={!!editingFolder}
+        onClose={() => setEditingFolder(null)}
+        folderData={editingFolder}
+        onSave={handleSaveFolder}
+      />
+
       <RichTextEditModal
         isOpen={!!editingMessage}
         onClose={() => setEditingMessage(null)}
@@ -4148,6 +4835,15 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
 .tag-pill { background-color: rgba(255, 255, 255, 0.2); color: #fff; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.75rem; }
 .card-avatars { display: none; }
 
+/* ▼▼▼ [신규] 드래그 앤 드롭 관련 스타일 ▼▼▼ */
+.conversation-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  box-shadow: none;
+  border: 2px dashed var(--global-accent-color, #5865f2);
+}
+/* ▲▲▲ */
+
 /* --- 3. 워크스페이스 --- */
 .workspace-container { 
   display: flex;
@@ -4267,6 +4963,69 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
 .tag-pill-small { background-color: var(--input-bg); color: var(--text-muted); padding: 0.1rem 0.5rem; border-radius: 99px; font-size: 0.7rem; }
 .conversation-item.selected .tag-pill-small { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
 
+/* ▼▼▼ [신규] 사이드바 폴더 및 드래그앤드롭 스타일 ▼▼▼ */
+.conversation-list-footer {
+  padding: 0.5rem 1rem 1rem;
+  border-top: 1px solid var(--border-color);
+}
+.add-folder-btn {
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  background-color: var(--input-bg);
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
+}
+.add-folder-btn:hover {
+  background-color: var(--border-color);
+  color: var(--text-color);
+}
+.folder-item {
+  margin: 0.5rem 0;
+}
+.folder-header {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.5rem;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.folder-header:hover {
+  background-color: var(--input-bg);
+}
+.folder-toggle-icon {
+  width: 16px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+.folder-header.collapsed .folder-toggle-icon {
+  transform: rotate(-90deg);
+}
+.folder-name {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-left: 0.25rem;
+  flex-grow: 1;
+}
+.folder-content {
+  padding-left: 1rem;
+}
+.conversation-list .dragging {
+  opacity: 0.4;
+  background-color: var(--border-color);
+}
+.folder-header.drag-over {
+  background-color: var(--global-accent-color) !important;
+  opacity: 0.2;
+}
+/* ▲▲▲ */
+
+
 /* --- 5. 채팅창 --- */
 /* [신규] 스티커와 메시지 리스트를 감싸는 컨테이너 */
 .message-view-content {
@@ -4364,6 +5123,17 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
 .slider-container span { font-family: monospace; font-size: 0.85rem; min-width: 50px; text-align: right; }
 .settings-panel select { background-color: #f8f9fa; color: #212529; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 5px; width: 100%; }
 
+/* ▼▼▼ [추가] 설정 패널의 텍스트 입력 필드 스타일 ▼▼▼ */
+.settings-panel .settings-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background-color: #f8f9fa;
+  color: #212529;
+  margin-top: 0.5rem;
+}
+
 /* ▼▼▼ 테마 에디터 탭 UI 스타일 (신규) ▼▼▼ */
 .theme-editor-container {
   display: flex;
@@ -4425,12 +5195,32 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); padding: 0.4rem 0; min-width: 160px; border: 1px solid rgba(0,0,0,0.05);
 }
 .context-menu ul { list-style: none; padding: 0; margin: 0; }
-.context-menu li { padding: 0.6rem 1rem; cursor: pointer; color: #212529; font-size: 0.9rem; transition: background-color 0.1s; } /* [수정] 텍스트 색상 고정 */
+.context-menu li { padding: 0.6rem 1rem; cursor: pointer; color: #212529; font-size: 0.9rem; transition: background-color 0.1s; position: relative; } /* [수정] 텍스트 색상 고정 */
 .context-menu li:hover { background-color: var(--input-bg); }
 .context-menu li.delete { color: #e53e3e; }
 .context-menu li.delete:hover { background-color: #e53e3e; color: white; }
 .context-menu li.separator { height: 1px; background-color: var(--border-color); margin: 0.4rem 0; padding: 0; } /* [수정] 변수 적용 */
 .context-menu li.separator:hover { background-color: var(--border-color); } /* [수정] 변수 적용 */
+/* ▼▼▼ [신규] 하위 메뉴 스타일 ▼▼▼ */
+.context-menu .submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -5px; /* 부모 li의 padding 상쇄 */
+}
+.context-menu li:hover > .submenu {
+  display: block;
+}
+.context-menu li.has-submenu::after {
+  content: '▶';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #aaa;
+}
+/* ▲▲▲ */
 
 /* --- 9. 이미지 크롭 모달 --- */
 .modal-content.image-crop-modal-content { max-width: 800px; }
@@ -5492,13 +6282,14 @@ input[type="range"]:active::-moz-range-thumb {
   transform: scale(1.1);
 }
 
-/* --- 26. 텍스트 스티커 모달 스타일 (신규 추가) --- */
+/* --- 26. 텍스트 스티커 모달 스타일 (신규 추가 & 수정) --- */
 
 .text-sticker-modal-content .form-card {
   padding: 1rem;
 }
 
 .text-sticker-preview {
+  position: relative; /* 자식 요소(mac-dots)의 위치 기준 */
   width: 100%;
   min-height: 150px;
   border-radius: var(--border-radius);
@@ -5510,12 +6301,77 @@ input[type="range"]:active::-moz-range-thumb {
   background-color: #f0f2f5;
   text-align: center;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .text-sticker-preview span {
   max-width: 100%;
   word-break: break-word;
 }
+
+/* ▼▼▼ [신규] 스타일 선택 UI 스타일 ▼▼▼ */
+.sticker-style-selector {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.style-option-btn {
+  flex: 1;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+}
+.style-option-btn:hover {
+  background-color: #f8f9fa;
+  border-color: #adb5bd;
+}
+.style-option-btn.active {
+  background-color: var(--global-accent-color, #5865f2);
+  color: white;
+  border-color: var(--global-accent-color, #5865f2);
+  font-weight: 500;
+}
+/* ▲▲▲ */
+
+/* ▼▼▼ [신규] 프리뷰 스타일 ▼▼▼ */
+.mac-dots-container {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 6px;
+}
+.mac-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+.mac-dot.red { background-color: #FF5F56; }
+.mac-dot.yellow { background-color: #FFBD2E; }
+.mac-dot.green { background-color: #27C93F; }
+
+.text-sticker-preview.speech-bubble {
+    position: relative;
+    margin-bottom: 15px; /* 꼬리 공간 확보 */
+}
+.text-sticker-preview.speech-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border: 15px solid transparent;
+    border-top-color: var(--preview-bg-color, #5865F2);
+    /* JS에서 --preview-bg-color 변수를 동적으로 설정해줘야 합니다. */
+}
+/* ▲▲▲ */
+
 
 .text-sticker-modal-content textarea {
   width: 100%;
@@ -5532,7 +6388,6 @@ input[type="range"]:active::-moz-range-thumb {
   gap: 1rem;
 }
 
-/* ▼▼▼ [수정] 폼 카드 내부를 flexbox로 만들어 컨트롤 간 간격 자동 조절 ▼▼▼ */
 .text-sticker-controls-grid .form-card {
   display: flex;
   flex-direction: column;
@@ -5577,7 +6432,6 @@ input[type="range"]:active::-moz-range-thumb {
   cursor: not-allowed;
 }
 
-/* ▼▼▼ [수정] 색상 패널의 슬라이더에 라벨 추가를 위해 스타일 조정 ▼▼▼ */
 .text-sticker-controls-grid .form-card .slider-container {
   display: flex;
   align-items: center;
@@ -5600,9 +6454,7 @@ input[type="range"]:active::-moz-range-thumb {
   font-size: 0.9rem;
 }
 
-/* Workspace 헤더 아이콘 변경 대응 */
 .workspace-header .theme-edit-btn i.fa-sticky-note {
-  /* 기존 아이콘은 이제 사용되지 않으므로, 필요 시 이 스타일은 제거해도 됩니다. */
 }
 
 /* ▼▼▼ [신규] 메시지 입력창 버전 선택 UI 스타일 ▼▼▼ */
@@ -5718,6 +6570,32 @@ input[type="range"]:active::-moz-range-thumb {
   margin: 0;
 }
 
+/* ▼▼▼ [신규] 불러오기 모달의 캐릭터 버전 선택 UI ▼▼▼ */
+.import-character-version-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.import-character-version-selectors .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.import-character-version-selectors label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.import-character-version-selectors select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+}
+/* ▲▲▲ */
+
+
 .import-status {
   margin-top: 1rem;
   text-align: center;
@@ -5752,6 +6630,33 @@ input[type="range"]:active::-moz-range-thumb {
   outline: none;
   border-color: var(--global-accent-color, #5865f2);
   box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33;
+}
+
+/* 컨텍스트 메뉴 하위 메뉴 스타일 */
+.context-menu li.has-submenu {
+  position: relative;
+}
+
+.context-menu li.has-submenu::after {
+  content: '▶';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.context-menu li .submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -5px; /* 부모 li의 padding 값에 맞춰 조정 */
+  z-index: 1002;
+}
+
+.context-menu li:hover > .submenu {
+  display: block;
 }
 
 
@@ -5839,13 +6744,41 @@ const getInitialState = (key, defaultValue) => {
   }
 };
 
+const migrateDataStructure = (pairs) => {
+  if (!Array.isArray(pairs)) return [];
+  return pairs.map(pair => {
+    let needsUpdate = false;
+    if (!pair.hasOwnProperty('folders')) {
+      pair.folders = [];
+      needsUpdate = true;
+    }
+    if (Array.isArray(pair.conversations)) {
+      pair.conversations = pair.conversations.map((convo, index) => {
+        const updatedConvo = { ...convo };
+        if (!convo.hasOwnProperty('order')) {
+          updatedConvo.order = index;
+          needsUpdate = true;
+        }
+        if (!convo.hasOwnProperty('folderId')) {
+          updatedConvo.folderId = null;
+          needsUpdate = true;
+        }
+        return updatedConvo;
+      });
+    }
+    return pair;
+  });
+};
+
+
 function App() {
-  const [characterPairs, setCharacterPairs] = useState(() => getInitialState('pair-chat-data', []));
+  const [characterPairs, setCharacterPairs] = useState(() => migrateDataStructure(getInitialState('pair-chat-data', [])));
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedPairId, setSelectedPairId] = useState(null);
   const [isAddPairModalOpen, setIsAddPairModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [globalTheme, setGlobalTheme] = useState(() => getInitialState('chat-app-global-theme', DEFAULT_GLOBAL_THEME));
+  const [titleBarText, setTitleBarText] = useState(() => getInitialState('chat-app-title-bar-text', '씹덕의 세계로 오라'));
   const [selectedFont, setSelectedFont] = useState(() => getInitialState('chat-backup-font', WEB_FONTS[0].value));
   const [availableFonts, setAvailableFonts] = useState({ web: WEB_FONTS, system: [] });
   const [editingConvo, setEditingConvo] = useState(null);
@@ -5859,6 +6792,7 @@ function App() {
 
   useEffect(() => { if(Array.isArray(characterPairs)) { localStorage.setItem('pair-chat-data', JSON.stringify(characterPairs)); } }, [characterPairs]);
   useEffect(() => { localStorage.setItem('chat-app-global-theme', JSON.stringify(globalTheme)); }, [globalTheme]);
+  useEffect(() => { localStorage.setItem('chat-app-title-bar-text', JSON.stringify(titleBarText)); }, [titleBarText]);
   useEffect(() => {
     localStorage.setItem('chat-backup-font', JSON.stringify(selectedFont));
     document.documentElement.style.setProperty('--global-font-family', selectedFont);
@@ -5886,6 +6820,7 @@ function App() {
       ...newPairDataBuffer,
       id: `pair_${Date.now()}`,
       conversations: [],
+      folders: [], // ▼▼▼ [버그 수정] folders 속성 추가
       slideImages: [],
       characters: { ...DEFAULT_CHARACTERS },
       tags: [],
@@ -5899,7 +6834,7 @@ function App() {
 
   const handleCreatePairRequest = useCallback((pairData) => {
     if (!pairData.backgroundImage) {
-      const newPair = { ...pairData, id: `pair_${Date.now()}`, conversations: [], slideImages: [], characters: { ...DEFAULT_CHARACTERS }, tags: [], theme: { ...DEFAULT_WORKSPACE_THEME } };
+      const newPair = { ...pairData, id: `pair_${Date.now()}`, conversations: [], folders: [], slideImages: [], characters: { ...DEFAULT_CHARACTERS }, tags: [], theme: { ...DEFAULT_WORKSPACE_THEME } };
       setCharacterPairs(pairs => [...(Array.isArray(pairs) ? pairs : []), newPair]);
     } else {
       setNewPairDataBuffer(pairData);
@@ -5921,13 +6856,14 @@ function App() {
   const handleAddMessage = useCallback(async (convoId, messageData) => {
     let newMessage;
     const { characterVersionId } = messageData;
+    const uniqueId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     if (messageData.type === 'file') {
       const { file, sender } = messageData;
       try {
         const imageId = await db.images.add({ data: file });
         const fileType = file.type.startsWith('image/') ? 'image' : 'video';
-        newMessage = { id: Date.now(), sender, type: fileType, content: imageId, characterVersionId };
+        newMessage = { id: uniqueId, sender, type: fileType, content: imageId, characterVersionId };
       } catch (error) { console.error("미디어 파일 저장 실패:", error); alert("미디어 파일을 저장하는 데 실패했습니다."); return; }
     } else {
       const { text, sender } = messageData;
@@ -5940,17 +6876,17 @@ function App() {
         try {
           const metadata = await window.electronAPI.fetchLinkMetadata(parsedData.content.url);
           if (metadata && metadata.success) {
-            newMessage = { id: Date.now(), sender, type: 'link', content: { ...parsedData.content, ...metadata }, characterVersionId };
+            newMessage = { id: uniqueId, sender, type: 'link', content: { ...parsedData.content, ...metadata }, characterVersionId };
           } else {
-            newMessage = { id: Date.now(), sender, type: 'text', content: text, characterVersionId };
+            newMessage = { id: uniqueId, sender, type: 'text', content: text, characterVersionId };
           }
         } catch (error) {
-          newMessage = { id: Date.now(), sender, type: 'text', content: text, characterVersionId };
+          newMessage = { id: uniqueId, sender, type: 'text', content: text, characterVersionId };
         }
       } else if (parsedData && parsedData.type === 'embed') {
-        newMessage = { id: Date.now(), sender, ...parsedData, characterVersionId };
+        newMessage = { id: uniqueId, sender, ...parsedData, characterVersionId };
       } else {
-        newMessage = { id: Date.now(), sender, type: 'text', content: text, characterVersionId };
+        newMessage = { id: uniqueId, sender, type: 'text', content: text, characterVersionId };
       }
     }
 
@@ -5980,7 +6916,7 @@ function App() {
           const existingMessages = convo.messages || [];
           const messagesWithIds = newMessages.map((msg, index) => ({
             ...msg,
-            id: Date.now() + index,
+            id: `msg_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`,
           }));
           return { ...convo, messages: [...existingMessages, ...messagesWithIds] };
         })
@@ -6006,6 +6942,78 @@ function App() {
     }));
   }, [selectedPairId]);
 
+  const handleAddOrUpdateTextSticker = useCallback(async (convoId, stickerData, blob) => {
+    try {
+      const imageId = await db.images.add({ data: blob });
+      const finalStickerData = { ...stickerData, imageId };
+
+      setCharacterPairs(pairs => pairs.map(pair => {
+        if (pair.id !== selectedPairId) return pair;
+        return {
+          ...pair,
+          conversations: pair.conversations.map(convo => {
+            if (convo.id !== convoId) return convo;
+            
+            const currentStickers = convo.stickers || [];
+            const isUpdate = currentStickers.some(s => s.id === finalStickerData.id);
+            
+            let updatedStickers;
+            if (isUpdate) {
+              updatedStickers = currentStickers.map(s => s.id === finalStickerData.id ? finalStickerData : s);
+            } else {
+              updatedStickers = [...currentStickers, finalStickerData];
+            }
+            return { ...convo, stickers: updatedStickers };
+          })
+        };
+      }));
+    } catch (error) {
+      console.error("텍스트 스티커 저장 실패:", error);
+      alert("텍스트 스티커를 저장하는 데 실패했습니다.");
+    }
+  }, [selectedPairId]);
+  
+  const handleUpdateStickerOrder = useCallback((convoId, stickerId, direction) => {
+    setCharacterPairs(pairs => pairs.map(pair => {
+      if (pair.id !== selectedPairId) return pair;
+      return {
+        ...pair,
+        conversations: pair.conversations.map(convo => {
+          if (convo.id !== convoId) return convo;
+
+          const stickers = [...(convo.stickers || [])];
+          const index = stickers.findIndex(s => s.id === stickerId);
+          if (index === -1) return convo;
+
+          const [sticker] = stickers.splice(index, 1);
+
+          if (direction === 'front') {
+            stickers.push(sticker);
+          } else if (direction === 'back') {
+            stickers.unshift(sticker);
+          }
+
+          return { ...convo, stickers };
+        })
+      };
+    }));
+  }, [selectedPairId]);
+  
+  const handleDeleteSticker = useCallback((convoId, stickerId) => {
+    setCharacterPairs(pairs => pairs.map(pair => {
+      if (pair.id !== selectedPairId) return pair;
+      return {
+        ...pair,
+        conversations: pair.conversations.map(convo => {
+          if (convo.id !== convoId) return convo;
+          const updatedStickers = (convo.stickers || []).filter(s => s.id !== stickerId);
+          return { ...convo, stickers: updatedStickers };
+        })
+      };
+    }));
+  }, [selectedPairId]);
+  
+  const handleUpdateTitleBarText = useCallback((newText) => { setTitleBarText(newText); }, []);
   const handleDashboardContextMenu = (e, pairId) => { e.preventDefault(); setDashboardContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, pairId }); };
   const closeDashboardContextMenu = () => setDashboardContextMenu({ ...dashboardContextMenu, isOpen: false });
   const handleDeletePair = useCallback((pairIdToDelete) => { if (window.confirm("정말로 이 대화 로그 전체를 삭제하시겠습니까? 모든 내용이 영구적으로 사라집니다.")) { setCharacterPairs(pairs => pairs.filter(p => p.id !== pairIdToDelete)); } }, []);
@@ -6015,7 +7023,22 @@ function App() {
   const handleSelectPair = useCallback((pairId) => { setSelectedPairId(pairId); setCurrentView('workspace'); }, []);
   const handleGoToDashboard = useCallback(() => { setSelectedPairId(null); setCurrentView('dashboard'); }, []);
   const handleUpdatePairDetails = useCallback((pairId, updatedDetails) => { setCharacterPairs(pairs => pairs.map(p => p.id === pairId ? { ...p, title: updatedDetails.title, tags: updatedDetails.tags } : p)); }, []);
-  const handleAddConversation = useCallback((pairId, convoData) => { const newConversation = { id: `convo_${Date.now()}`, title: convoData.title, tags: convoData.tags || [], messages: [], stickers: [] }; setCharacterPairs(pairs => pairs.map(p => { if (p.id === pairId) { const conversations = p.conversations || []; return { ...p, conversations: [...conversations, newConversation] }; } return p; })); }, []);
+  const handleAddConversation = useCallback((pairId, convoData) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+        if (p.id !== pairId) return p;
+        const conversations = p.conversations || [];
+        const newConversation = {
+            id: `convo_${Date.now()}`,
+            title: convoData.title,
+            tags: convoData.tags || [],
+            messages: [],
+            stickers: [],
+            folderId: null,
+            order: conversations.length,
+        };
+        return { ...p, conversations: [...conversations, newConversation] };
+    }));
+  }, []);
   const handleUpdateBackgroundImage = useCallback((pairId, newImageUrl) => { setCharacterPairs(pairs => pairs.map(p => p.id === pairId ? { ...p, backgroundImage: newImageUrl } : p)); }, []);
   const handleAddSlideImage = useCallback((pairId, newImageId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id === pairId) { const existingImages = p.slideImages || []; return { ...p, slideImages: [...existingImages, newImageId] }; } return p; })); }, []);
   const handleDeleteSlideImage = useCallback(async (pairId, imageIdToDelete) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id === pairId) { const updatedImages = (p.slideImages || []).filter(id => id !== imageIdToDelete); return { ...p, slideImages: updatedImages }; } return p; })); try { await db.images.delete(imageIdToDelete); } catch (error) { console.error("IndexedDB에서 이미지 삭제 실패:", error); } }, []);
@@ -6023,64 +7046,135 @@ function App() {
   const handleOpenConvoSettingsModal = useCallback((convoId) => { const pair = (Array.isArray(characterPairs) ? characterPairs : []).find(p => p.id === selectedPairId); const convo = (pair?.conversations || []).find(c => c.id === convoId); if (convo) setEditingConvo(convo); }, [characterPairs, selectedPairId]);
   const handleUpdateConversation = useCallback((convoId, updatedData) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).map(c => c.id !== convoId ? c : { ...c, ...updatedData }); return { ...p, conversations: updatedConversations }; })); setEditingConvo(null); }, [selectedPairId]);
   const handleDeleteConversation = useCallback((convoId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).filter(c => c.id !== convoId); return { ...p, conversations: updatedConversations }; })); }, [selectedPairId]);
-  
-  const handleEditMessage = useCallback((convoId, messageId, updatedData) => {
-    setCharacterPairs(pairs => pairs.map(pair => {
-      if (pair.id !== selectedPairId) return pair;
-      return {
-        ...pair,
-        conversations: pair.conversations.map(convo => {
-          if (convo.id !== convoId) return convo;
-          return {
-            ...convo,
-            messages: convo.messages.map(msg => 
-              msg.id === messageId ? { ...msg, ...updatedData } : msg
-            )
-          };
-        })
-      };
-    }));
-  }, [selectedPairId]);
-  
-  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => {
-    const newMessage = {
-      id: Date.now(),
-      type: 'text',
-      content: messageData.text,
-      sender: messageData.sender,
-      characterVersionId: messageData.characterVersionId,
-    };
-    setCharacterPairs(pairs => pairs.map(pair => {
-      if (pair.id !== selectedPairId) return pair;
-      return {
-        ...pair,
-        conversations: pair.conversations.map(convo => {
-          if (convo.id !== convoId) return convo;
-          const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId);
-          if (targetIndex === -1) return convo;
-          const newMessages = [...convo.messages];
-          const insertIndex = position === 'before' ? targetIndex : targetIndex + 1;
-          newMessages.splice(insertIndex, 0, newMessage);
-          return { ...convo, messages: newMessages };
-        })
-      };
-    }));
-  }, [selectedPairId]);
+  const handleEditMessage = useCallback((convoId, messageId, updatedData) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.map(msg => msg.id === messageId ? { ...msg, ...updatedData } : msg) }; }) }; })); }, [selectedPairId]);
+  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => { const newMessage = { id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, type: 'text', content: messageData.text, sender: messageData.sender, characterVersionId: messageData.characterVersionId, }; setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId); if (targetIndex === -1) return convo; const newMessages = [...convo.messages]; const insertIndex = position === 'before' ? targetIndex : targetIndex + 1; newMessages.splice(insertIndex, 0, newMessage); return { ...convo, messages: newMessages }; }) }; })); }, [selectedPairId]);
   const handleDeleteMessage = useCallback((convoId, messageId) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.filter(msg => msg.id !== messageId) }; }) }; })); }, [selectedPairId]);
   const handleUpdateStickers = useCallback((convoId, newStickers) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, stickers: newStickers }; }) }; })); }, [selectedPairId]);
+  const handleReorderPairs = useCallback((draggedId, targetId) => {
+    setCharacterPairs(currentPairs => {
+      const pairs = [...currentPairs];
+      const draggedIndex = pairs.findIndex(p => p.id === draggedId);
+      const targetIndex = pairs.findIndex(p => p.id === targetId);
+      if (draggedIndex === -1 || targetIndex === -1) return currentPairs;
+      const [draggedItem] = pairs.splice(draggedIndex, 1);
+      pairs.splice(targetIndex, 0, draggedItem);
+      return pairs;
+    });
+  }, []);
+
+  const handleAddFolder = useCallback((pairId, folderData) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const folders = p.folders || [];
+      const newFolder = {
+        id: `folder_${Date.now()}`,
+        name: folderData.name,
+        tags: folderData.tags || [],
+        order: folders.length
+      };
+      return { ...p, folders: [...folders, newFolder] };
+    }));
+  }, []);
+
+  const handleRenameFolder = useCallback((pairId, folderId, folderData) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const updatedFolders = p.folders.map(f => f.id === folderId ? { ...f, name: folderData.name, tags: folderData.tags } : f);
+      return { ...p, folders: updatedFolders };
+    }));
+  }, []);
+
+  const handleDeleteFolder = useCallback((pairId, folderId) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const updatedFolders = p.folders.filter(f => f.id !== folderId);
+      const updatedConversations = p.conversations.map(c => c.folderId === folderId ? { ...c, folderId: null } : c);
+      return { ...p, folders: updatedFolders, conversations: updatedConversations };
+    }));
+  }, []);
+
+  const handleMoveConversationToFolder = useCallback((pairId, conversationId, folderId) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const updatedConversations = p.conversations.map(c => c.id === conversationId ? { ...c, folderId: folderId } : c);
+      return { ...p, conversations: updatedConversations };
+    }));
+  }, []);
+
+  const handleReorderItems = useCallback((pairId, dragItem, dropTarget) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+        if (p.id !== pairId) return p;
+
+        let conversations = [...p.conversations];
+        let folders = [...p.folders];
+
+        if (dragItem.type === 'conversation') {
+            const draggedIndex = conversations.findIndex(c => c.id === dragItem.id);
+            if (draggedIndex === -1) return p;
+            
+            const [draggedConvo] = conversations.splice(draggedIndex, 1);
+
+            if (dropTarget.type === 'folder') {
+                draggedConvo.folderId = dropTarget.id;
+                conversations.push(draggedConvo);
+            } else if (dropTarget.type === 'conversation') {
+                const dropConvo = p.conversations.find(c => c.id === dropTarget.id);
+                draggedConvo.folderId = dropConvo ? dropConvo.folderId : null;
+                const dropIndex = conversations.findIndex(c => c.id === dropTarget.id);
+                conversations.splice(dropIndex, 0, draggedConvo);
+            } else { // root
+                draggedConvo.folderId = null;
+                conversations.push(draggedConvo);
+            }
+        } else if (dragItem.type === 'folder') {
+            const draggedIndex = folders.findIndex(f => f.id === dragItem.id);
+            if (draggedIndex === -1) return p;
+            const [draggedFolder] = folders.splice(draggedIndex, 1);
+
+            if (dropTarget.type === 'folder') {
+                const dropIndex = folders.findIndex(f => f.id === dropTarget.id);
+                folders.splice(dropIndex, 0, draggedFolder);
+            } else {
+                folders.push(draggedFolder);
+            }
+        }
+
+        // Re-calculate order properties
+        folders.forEach((f, index) => f.order = index);
+
+        const convosByFolder = conversations.reduce((acc, c) => {
+            const key = c.folderId || 'root';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(c);
+            return acc;
+        }, {});
+
+        Object.values(convosByFolder).forEach(group => {
+            group.forEach((convo, index) => {
+                const originalConvo = conversations.find(c => c.id === convo.id);
+                if (originalConvo) originalConvo.order = index;
+            });
+        });
+
+        return { ...p, conversations, folders };
+    }));
+  }, []);
   
   const selectedPair = (Array.isArray(characterPairs) ? characterPairs : []).find(p => p.id === selectedPairId);
   const dashboardMenuItems = [ { label: '정보 수정', action: () => handleOpenPairSettingsModal(dashboardContextMenu.pairId) }, { isSeparator: true }, { label: '삭제', className: 'delete', action: () => handleDeletePair(dashboardContextMenu.pairId) }, ];
 
   return (
     <>
-      <TitleBar bgColor={globalTheme.titleBarBg} onOpenSettings={() => setIsSettingsModalOpen(true)} />
+      <TitleBar 
+        bgColor={globalTheme.titleBarBg} 
+        onOpenSettings={() => setIsSettingsModalOpen(true)} 
+        titleText={titleBarText}
+      />
       <div className="app-container-root" style={{ paddingTop: '32px' }}>
         {currentView === 'dashboard' ? (
-          <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(true)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} />
+          <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(false)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} onReorder={handleReorderPairs} />
         ) : (
           selectedPair && (
-            // ▼▼▼ [핵심 확인] Workspace 컴포넌트에 onImportMessages prop이 정확히 전달되고 있는지 확인하세요. ▼▼▼
             <Workspace
               pairData={selectedPair} 
               onGoToDashboard={handleGoToDashboard} 
@@ -6099,7 +7193,16 @@ function App() {
               onDeleteMessage={handleDeleteMessage} 
               onUpdateStickers={handleUpdateStickers}
               onToggleBookmark={handleToggleBookmark}
-              onImportMessages={handleImportMessages} // <-- 이 줄이 가장 중요합니다!
+              onImportMessages={handleImportMessages}
+              availableFonts={availableFonts}
+              onAddOrUpdateTextSticker={handleAddOrUpdateTextSticker}
+              onUpdateStickerOrder={handleUpdateStickerOrder}
+              onDeleteSticker={handleDeleteSticker}
+              onAddFolder={handleAddFolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
+              onReorderItems={handleReorderItems}
+              onMoveConversationToFolder={handleMoveConversationToFolder}
             />
           )
         )}
@@ -6111,9 +7214,17 @@ function App() {
         />
         <SettingsModal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="전역 설정">
           <SettingsPanel 
-            availableFonts={availableFonts} selectedFont={selectedFont} onFontChange={(e) => setSelectedFont(e.target.value)} 
-            theme={globalTheme} onThemeChange={handleUpdateGlobalTheme} fontSize={fontSize} onFontSizeChange={(e) => setFontSize(parseFloat(e.target.value))}
-            letterSpacing={letterSpacing} onLetterSpacingChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
+            availableFonts={availableFonts} 
+            selectedFont={selectedFont} 
+            onFontChange={(e) => setSelectedFont(e.target.value)} 
+            theme={globalTheme} 
+            onThemeChange={handleUpdateGlobalTheme} 
+            fontSize={fontSize} 
+            onFontSizeChange={(e) => setFontSize(parseFloat(e.target.value))}
+            letterSpacing={letterSpacing} 
+            onLetterSpacingChange={(e) => setLetterSpacing(parseFloat(e.target.value))}
+            titleBarText={titleBarText}
+            onTitleBarTextChange={handleUpdateTitleBarText}
           />
         </SettingsModal>
         <PairSettingsModal 

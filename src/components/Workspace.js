@@ -20,6 +20,8 @@ import ColorThief from 'colorthief';
 import { generateThemesFromPalette } from '../themeUtils';
 import ThemeSelectionModal from './ThemeSelectionModal';
 import { getMarkAttributes } from '@tiptap/core';
+import * as XLSX from 'xlsx';
+import FolderSettingsModal from './FolderSettingsModal';
 
 const dataURLtoBlob = (dataurl) => {
   const arr = dataurl.split(',');
@@ -71,8 +73,12 @@ const Workspace = ({
   availableFonts,
   onAddOrUpdateTextSticker,
   onUpdateStickerOrder,
-  // ▼▼▼ [신규] 스티커 삭제 핸들러 수신 ▼▼▼
   onDeleteSticker,
+  onAddFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  onReorderItems,
+  onMoveConversationToFolder,
 }) => {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
@@ -100,6 +106,9 @@ const Workspace = ({
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   
   const [editingSticker, setEditingSticker] = useState(null);
+
+  // ▼▼▼ NEW: 폴더 모달 상태 추가 ▼▼▼
+  const [editingFolder, setEditingFolder] = useState(null); // { id?, name?, tags?, isNew: boolean }
 
   const stickerInputRef = useRef(null);
 
@@ -309,7 +318,6 @@ const Workspace = ({
     setContextMenu({ isOpen: true, position: { x: e.clientX, y: e.clientY }, items: menuItems });
   };
   
-  // ▼▼▼ [수정] 삭제 메뉴 추가 ▼▼▼
   const handleStickerContextMenu = (e, sticker) => {
     e.preventDefault();
     e.stopPropagation();
@@ -395,6 +403,87 @@ const Workspace = ({
     }
   };
   
+  const handleExport = async (fileType) => {
+    if (!selectedConversation) {
+      alert('내보낼 대화를 선택해주세요.');
+      return;
+    }
+
+    const getCharacterName = (sender, versionId) => {
+      const key = (sender === 'Me' || sender === 'me') ? 'me' : 'other';
+      const versions = pairData.characters[key] || [];
+      const version = versions.find(v => v.id === versionId);
+      return version ? version.name : (versions[0]?.name || (key === 'me' ? 'A 캐릭터' : 'B 캐릭터'));
+    };
+
+    const renderContent = (message) => {
+      switch (message.type) {
+        case 'image': return '[이미지]';
+        case 'video': return '[비디오]';
+        case 'embed': return `[링크: ${message.content.service}]`;
+        case 'link': return `[링크: ${message.content.url}]`;
+        case 'text':
+        default:
+          const tempDiv = document.createElement('div');
+          tempDiv.innerHTML = message.content || message.text || '';
+          return tempDiv.textContent || tempDiv.innerText || '';
+      }
+    };
+    
+    let blob;
+    let filename = `${selectedConversation.title.replace(/ /g, '_')}_export.${fileType}`;
+
+    if (fileType === 'txt') {
+      const content = selectedConversation.messages
+        .map(msg => `[${getCharacterName(msg.sender, msg.characterVersionId)}] ${renderContent(msg)}`)
+        .join('\n');
+      blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    } else if (fileType === 'xlsx') {
+      const data = selectedConversation.messages.map(msg => ({
+        '화자': getCharacterName(msg.sender, msg.characterVersionId),
+        '내용': renderContent(msg),
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, '대화 내용');
+      const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+      blob = new Blob([wbout], { type: 'application/octet-stream' });
+    }
+
+    if (blob) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // ▼▼▼ NEW: 폴더 관련 모달 핸들러들 ▼▼▼
+  const handleAddFolderRequest = () => {
+    setEditingFolder({ isNew: true, name: '', tags: [] });
+  };
+
+  const handleRenameFolderRequest = (folderId) => {
+    const folder = pairData.folders.find(f => f.id === folderId);
+    if (folder) {
+      setEditingFolder({ ...folder, isNew: false });
+    }
+  };
+
+  const handleSaveFolder = (folderData) => {
+    if (editingFolder?.isNew) {
+      onAddFolder(pairData.id, folderData);
+    } else {
+      onRenameFolder(pairData.id, editingFolder.id, folderData);
+    }
+    setEditingFolder(null);
+  };
+
+
   const selectedConversation = (pairData.conversations || []).find(c => c.id === selectedConversationId);
   const bookmarkedMessages = selectedConversation?.messages.filter(m => m.bookmarked) || [];
 
@@ -420,7 +509,23 @@ const Workspace = ({
 
   return (
     <div className="workspace-container" style={themeStyles}>
-      <ConversationList pairId={pairData.id} conversations={pairData.conversations} selectedConversationId={selectedConversationId} onSelectConversation={handleSelectConversation} onAddConversation={onAddConversation} slideImages={pairData.slideImages} onSelectSlideImage={handleSetAsBackground} onAddSlideImage={handleAddNewSlideImage} onDeleteSlideImage={(imageId) => onDeleteSlideImage(pairData.id, imageId)} onEditConversation={onEditConversation} onDeleteConversation={onDeleteConversation} />
+      <ConversationList 
+        pairData={pairData} 
+        selectedConversationId={selectedConversationId} 
+        onSelectConversation={handleSelectConversation} 
+        onAddConversation={onAddConversation} 
+        slideImages={pairData.slideImages} 
+        onSelectSlideImage={handleSetAsBackground} 
+        onAddSlideImage={handleAddNewSlideImage} 
+        onDeleteSlideImage={(imageId) => onDeleteSlideImage(pairData.id, imageId)} 
+        onEditConversation={onEditConversation} 
+        onDeleteConversation={onDeleteConversation}
+        onAddFolder={handleAddFolderRequest}
+        onRenameFolder={handleRenameFolderRequest}
+        onDeleteFolder={(folderId) => onDeleteFolder(pairData.id, folderId)}
+        onReorderItems={(dragItem, dropTarget) => onReorderItems(pairData.id, dragItem, dropTarget)}
+        onMoveConversationToFolder={(convoId, folderId) => onMoveConversationToFolder(pairData.id, convoId, folderId)}
+      />
       <div className="main-content-area">
         <header className="workspace-header">
           <button className="back-button" onClick={onGoToDashboard} title="대시보드로 돌아가기"><i className="fas fa-arrow-left"></i></button>
@@ -437,6 +542,12 @@ const Workspace = ({
             title="데이터 불러오기"
           >
             <i className="fas fa-file-import"></i>
+          </button>
+          <button className="theme-edit-btn" onClick={() => handleExport('txt')} disabled={!selectedConversationId} title="TXT로 내보내기">
+            <i className="fas fa-file-alt"></i>
+          </button>
+          <button className="theme-edit-btn" onClick={() => handleExport('xlsx')} disabled={!selectedConversationId} title="Excel로 내보내기">
+            <i className="fas fa-file-excel"></i>
           </button>
           <button 
             className="theme-edit-btn" 
@@ -505,6 +616,14 @@ const Workspace = ({
       <PairSettingsModal isOpen={isPairSettingsModalOpen} onClose={() => setIsPairSettingsModalOpen(false)} pairData={pairData} onSave={(updatedDetails) => onUpdatePairDetails(pairData.id, updatedDetails)} />
       <ImageCropModal isOpen={isCropperOpen} onClose={handleCloseCropper} imageSrc={imageToCrop} onCropComplete={handleCropComplete} aspectRatio={cropAspectRatio} />
       
+      {/* ▼▼▼ NEW: 폴더 설정 모달 렌더링 ▼▼▼ */}
+      <FolderSettingsModal
+        isOpen={!!editingFolder}
+        onClose={() => setEditingFolder(null)}
+        folderData={editingFolder}
+        onSave={handleSaveFolder}
+      />
+
       <RichTextEditModal
         isOpen={!!editingMessage}
         onClose={() => setEditingMessage(null)}

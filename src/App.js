@@ -78,8 +78,35 @@ const getInitialState = (key, defaultValue) => {
   }
 };
 
+const migrateDataStructure = (pairs) => {
+  if (!Array.isArray(pairs)) return [];
+  return pairs.map(pair => {
+    let needsUpdate = false;
+    if (!pair.hasOwnProperty('folders')) {
+      pair.folders = [];
+      needsUpdate = true;
+    }
+    if (Array.isArray(pair.conversations)) {
+      pair.conversations = pair.conversations.map((convo, index) => {
+        const updatedConvo = { ...convo };
+        if (!convo.hasOwnProperty('order')) {
+          updatedConvo.order = index;
+          needsUpdate = true;
+        }
+        if (!convo.hasOwnProperty('folderId')) {
+          updatedConvo.folderId = null;
+          needsUpdate = true;
+        }
+        return updatedConvo;
+      });
+    }
+    return pair;
+  });
+};
+
+
 function App() {
-  const [characterPairs, setCharacterPairs] = useState(() => getInitialState('pair-chat-data', []));
+  const [characterPairs, setCharacterPairs] = useState(() => migrateDataStructure(getInitialState('pair-chat-data', [])));
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedPairId, setSelectedPairId] = useState(null);
   const [isAddPairModalOpen, setIsAddPairModalOpen] = useState(false);
@@ -127,6 +154,7 @@ function App() {
       ...newPairDataBuffer,
       id: `pair_${Date.now()}`,
       conversations: [],
+      folders: [], // ▼▼▼ [버그 수정] folders 속성 추가
       slideImages: [],
       characters: { ...DEFAULT_CHARACTERS },
       tags: [],
@@ -140,7 +168,7 @@ function App() {
 
   const handleCreatePairRequest = useCallback((pairData) => {
     if (!pairData.backgroundImage) {
-      const newPair = { ...pairData, id: `pair_${Date.now()}`, conversations: [], slideImages: [], characters: { ...DEFAULT_CHARACTERS }, tags: [], theme: { ...DEFAULT_WORKSPACE_THEME } };
+      const newPair = { ...pairData, id: `pair_${Date.now()}`, conversations: [], folders: [], slideImages: [], characters: { ...DEFAULT_CHARACTERS }, tags: [], theme: { ...DEFAULT_WORKSPACE_THEME } };
       setCharacterPairs(pairs => [...(Array.isArray(pairs) ? pairs : []), newPair]);
     } else {
       setNewPairDataBuffer(pairData);
@@ -162,13 +190,14 @@ function App() {
   const handleAddMessage = useCallback(async (convoId, messageData) => {
     let newMessage;
     const { characterVersionId } = messageData;
+    const uniqueId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     if (messageData.type === 'file') {
       const { file, sender } = messageData;
       try {
         const imageId = await db.images.add({ data: file });
         const fileType = file.type.startsWith('image/') ? 'image' : 'video';
-        newMessage = { id: Date.now(), sender, type: fileType, content: imageId, characterVersionId };
+        newMessage = { id: uniqueId, sender, type: fileType, content: imageId, characterVersionId };
       } catch (error) { console.error("미디어 파일 저장 실패:", error); alert("미디어 파일을 저장하는 데 실패했습니다."); return; }
     } else {
       const { text, sender } = messageData;
@@ -181,17 +210,17 @@ function App() {
         try {
           const metadata = await window.electronAPI.fetchLinkMetadata(parsedData.content.url);
           if (metadata && metadata.success) {
-            newMessage = { id: Date.now(), sender, type: 'link', content: { ...parsedData.content, ...metadata }, characterVersionId };
+            newMessage = { id: uniqueId, sender, type: 'link', content: { ...parsedData.content, ...metadata }, characterVersionId };
           } else {
-            newMessage = { id: Date.now(), sender, type: 'text', content: text, characterVersionId };
+            newMessage = { id: uniqueId, sender, type: 'text', content: text, characterVersionId };
           }
         } catch (error) {
-          newMessage = { id: Date.now(), sender, type: 'text', content: text, characterVersionId };
+          newMessage = { id: uniqueId, sender, type: 'text', content: text, characterVersionId };
         }
       } else if (parsedData && parsedData.type === 'embed') {
-        newMessage = { id: Date.now(), sender, ...parsedData, characterVersionId };
+        newMessage = { id: uniqueId, sender, ...parsedData, characterVersionId };
       } else {
-        newMessage = { id: Date.now(), sender, type: 'text', content: text, characterVersionId };
+        newMessage = { id: uniqueId, sender, type: 'text', content: text, characterVersionId };
       }
     }
 
@@ -221,7 +250,7 @@ function App() {
           const existingMessages = convo.messages || [];
           const messagesWithIds = newMessages.map((msg, index) => ({
             ...msg,
-            id: Date.now() + index,
+            id: `msg_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 9)}`,
           }));
           return { ...convo, messages: [...existingMessages, ...messagesWithIds] };
         })
@@ -304,7 +333,6 @@ function App() {
     }));
   }, [selectedPairId]);
   
-  // ▼▼▼ [신규] 스티커 삭제 핸들러 ▼▼▼
   const handleDeleteSticker = useCallback((convoId, stickerId) => {
     setCharacterPairs(pairs => pairs.map(pair => {
       if (pair.id !== selectedPairId) return pair;
@@ -329,7 +357,22 @@ function App() {
   const handleSelectPair = useCallback((pairId) => { setSelectedPairId(pairId); setCurrentView('workspace'); }, []);
   const handleGoToDashboard = useCallback(() => { setSelectedPairId(null); setCurrentView('dashboard'); }, []);
   const handleUpdatePairDetails = useCallback((pairId, updatedDetails) => { setCharacterPairs(pairs => pairs.map(p => p.id === pairId ? { ...p, title: updatedDetails.title, tags: updatedDetails.tags } : p)); }, []);
-  const handleAddConversation = useCallback((pairId, convoData) => { const newConversation = { id: `convo_${Date.now()}`, title: convoData.title, tags: convoData.tags || [], messages: [], stickers: [] }; setCharacterPairs(pairs => pairs.map(p => { if (p.id === pairId) { const conversations = p.conversations || []; return { ...p, conversations: [...conversations, newConversation] }; } return p; })); }, []);
+  const handleAddConversation = useCallback((pairId, convoData) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+        if (p.id !== pairId) return p;
+        const conversations = p.conversations || [];
+        const newConversation = {
+            id: `convo_${Date.now()}`,
+            title: convoData.title,
+            tags: convoData.tags || [],
+            messages: [],
+            stickers: [],
+            folderId: null,
+            order: conversations.length,
+        };
+        return { ...p, conversations: [...conversations, newConversation] };
+    }));
+  }, []);
   const handleUpdateBackgroundImage = useCallback((pairId, newImageUrl) => { setCharacterPairs(pairs => pairs.map(p => p.id === pairId ? { ...p, backgroundImage: newImageUrl } : p)); }, []);
   const handleAddSlideImage = useCallback((pairId, newImageId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id === pairId) { const existingImages = p.slideImages || []; return { ...p, slideImages: [...existingImages, newImageId] }; } return p; })); }, []);
   const handleDeleteSlideImage = useCallback(async (pairId, imageIdToDelete) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id === pairId) { const updatedImages = (p.slideImages || []).filter(id => id !== imageIdToDelete); return { ...p, slideImages: updatedImages }; } return p; })); try { await db.images.delete(imageIdToDelete); } catch (error) { console.error("IndexedDB에서 이미지 삭제 실패:", error); } }, []);
@@ -338,9 +381,118 @@ function App() {
   const handleUpdateConversation = useCallback((convoId, updatedData) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).map(c => c.id !== convoId ? c : { ...c, ...updatedData }); return { ...p, conversations: updatedConversations }; })); setEditingConvo(null); }, [selectedPairId]);
   const handleDeleteConversation = useCallback((convoId) => { setCharacterPairs(pairs => pairs.map(p => { if (p.id !== selectedPairId) return p; const updatedConversations = (p.conversations || []).filter(c => c.id !== convoId); return { ...p, conversations: updatedConversations }; })); }, [selectedPairId]);
   const handleEditMessage = useCallback((convoId, messageId, updatedData) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.map(msg => msg.id === messageId ? { ...msg, ...updatedData } : msg) }; }) }; })); }, [selectedPairId]);
-  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => { const newMessage = { id: Date.now(), type: 'text', content: messageData.text, sender: messageData.sender, characterVersionId: messageData.characterVersionId, }; setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId); if (targetIndex === -1) return convo; const newMessages = [...convo.messages]; const insertIndex = position === 'before' ? targetIndex : targetIndex + 1; newMessages.splice(insertIndex, 0, newMessage); return { ...convo, messages: newMessages }; }) }; })); }, [selectedPairId]);
+  const handleAddMessageInBetween = useCallback((convoId, targetMessageId, messageData, position) => { const newMessage = { id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`, type: 'text', content: messageData.text, sender: messageData.sender, characterVersionId: messageData.characterVersionId, }; setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; const targetIndex = convo.messages.findIndex(msg => msg.id === targetMessageId); if (targetIndex === -1) return convo; const newMessages = [...convo.messages]; const insertIndex = position === 'before' ? targetIndex : targetIndex + 1; newMessages.splice(insertIndex, 0, newMessage); return { ...convo, messages: newMessages }; }) }; })); }, [selectedPairId]);
   const handleDeleteMessage = useCallback((convoId, messageId) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, messages: convo.messages.filter(msg => msg.id !== messageId) }; }) }; })); }, [selectedPairId]);
   const handleUpdateStickers = useCallback((convoId, newStickers) => { setCharacterPairs(pairs => pairs.map(pair => { if (pair.id !== selectedPairId) return pair; return { ...pair, conversations: pair.conversations.map(convo => { if (convo.id !== convoId) return convo; return { ...convo, stickers: newStickers }; }) }; })); }, [selectedPairId]);
+  const handleReorderPairs = useCallback((draggedId, targetId) => {
+    setCharacterPairs(currentPairs => {
+      const pairs = [...currentPairs];
+      const draggedIndex = pairs.findIndex(p => p.id === draggedId);
+      const targetIndex = pairs.findIndex(p => p.id === targetId);
+      if (draggedIndex === -1 || targetIndex === -1) return currentPairs;
+      const [draggedItem] = pairs.splice(draggedIndex, 1);
+      pairs.splice(targetIndex, 0, draggedItem);
+      return pairs;
+    });
+  }, []);
+
+  const handleAddFolder = useCallback((pairId, folderData) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const folders = p.folders || [];
+      const newFolder = {
+        id: `folder_${Date.now()}`,
+        name: folderData.name,
+        tags: folderData.tags || [],
+        order: folders.length
+      };
+      return { ...p, folders: [...folders, newFolder] };
+    }));
+  }, []);
+
+  const handleRenameFolder = useCallback((pairId, folderId, folderData) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const updatedFolders = p.folders.map(f => f.id === folderId ? { ...f, name: folderData.name, tags: folderData.tags } : f);
+      return { ...p, folders: updatedFolders };
+    }));
+  }, []);
+
+  const handleDeleteFolder = useCallback((pairId, folderId) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const updatedFolders = p.folders.filter(f => f.id !== folderId);
+      const updatedConversations = p.conversations.map(c => c.folderId === folderId ? { ...c, folderId: null } : c);
+      return { ...p, folders: updatedFolders, conversations: updatedConversations };
+    }));
+  }, []);
+
+  const handleMoveConversationToFolder = useCallback((pairId, conversationId, folderId) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+      if (p.id !== pairId) return p;
+      const updatedConversations = p.conversations.map(c => c.id === conversationId ? { ...c, folderId: folderId } : c);
+      return { ...p, conversations: updatedConversations };
+    }));
+  }, []);
+
+  const handleReorderItems = useCallback((pairId, dragItem, dropTarget) => {
+    setCharacterPairs(pairs => pairs.map(p => {
+        if (p.id !== pairId) return p;
+
+        let conversations = [...p.conversations];
+        let folders = [...p.folders];
+
+        if (dragItem.type === 'conversation') {
+            const draggedIndex = conversations.findIndex(c => c.id === dragItem.id);
+            if (draggedIndex === -1) return p;
+            
+            const [draggedConvo] = conversations.splice(draggedIndex, 1);
+
+            if (dropTarget.type === 'folder') {
+                draggedConvo.folderId = dropTarget.id;
+                conversations.push(draggedConvo);
+            } else if (dropTarget.type === 'conversation') {
+                const dropConvo = p.conversations.find(c => c.id === dropTarget.id);
+                draggedConvo.folderId = dropConvo ? dropConvo.folderId : null;
+                const dropIndex = conversations.findIndex(c => c.id === dropTarget.id);
+                conversations.splice(dropIndex, 0, draggedConvo);
+            } else { // root
+                draggedConvo.folderId = null;
+                conversations.push(draggedConvo);
+            }
+        } else if (dragItem.type === 'folder') {
+            const draggedIndex = folders.findIndex(f => f.id === dragItem.id);
+            if (draggedIndex === -1) return p;
+            const [draggedFolder] = folders.splice(draggedIndex, 1);
+
+            if (dropTarget.type === 'folder') {
+                const dropIndex = folders.findIndex(f => f.id === dropTarget.id);
+                folders.splice(dropIndex, 0, draggedFolder);
+            } else {
+                folders.push(draggedFolder);
+            }
+        }
+
+        // Re-calculate order properties
+        folders.forEach((f, index) => f.order = index);
+
+        const convosByFolder = conversations.reduce((acc, c) => {
+            const key = c.folderId || 'root';
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(c);
+            return acc;
+        }, {});
+
+        Object.values(convosByFolder).forEach(group => {
+            group.forEach((convo, index) => {
+                const originalConvo = conversations.find(c => c.id === convo.id);
+                if (originalConvo) originalConvo.order = index;
+            });
+        });
+
+        return { ...p, conversations, folders };
+    }));
+  }, []);
   
   const selectedPair = (Array.isArray(characterPairs) ? characterPairs : []).find(p => p.id === selectedPairId);
   const dashboardMenuItems = [ { label: '정보 수정', action: () => handleOpenPairSettingsModal(dashboardContextMenu.pairId) }, { isSeparator: true }, { label: '삭제', className: 'delete', action: () => handleDeletePair(dashboardContextMenu.pairId) }, ];
@@ -354,7 +506,7 @@ function App() {
       />
       <div className="app-container-root" style={{ paddingTop: '32px' }}>
         {currentView === 'dashboard' ? (
-          <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(true)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} />
+          <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(true)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} onReorder={handleReorderPairs} />
         ) : (
           selectedPair && (
             <Workspace
@@ -379,8 +531,12 @@ function App() {
               availableFonts={availableFonts}
               onAddOrUpdateTextSticker={handleAddOrUpdateTextSticker}
               onUpdateStickerOrder={handleUpdateStickerOrder}
-              // ▼▼▼ [신규] 스티커 삭제 핸들러 전달 ▼▼▼
               onDeleteSticker={handleDeleteSticker}
+              onAddFolder={handleAddFolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
+              onReorderItems={handleReorderItems}
+              onMoveConversationToFolder={handleMoveConversationToFolder}
             />
           )
         )}

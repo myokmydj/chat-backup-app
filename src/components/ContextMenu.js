@@ -17,35 +17,51 @@ const ContextMenu = ({ position, items, onClose }) => {
     };
   }, [onClose]);
 
-  // 메뉴 항목이 없으면 렌더링하지 않음
   if (!items || items.length === 0) {
     return null;
   }
 
+  const renderMenuItem = (item, index) => {
+    if (item.isSeparator) {
+      return <li key={`separator-${index}`} className="separator"></li>;
+    }
+
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
+
+    return (
+      <li
+        key={item.label}
+        onClick={(e) => {
+          if (!hasSubmenu && item.action) {
+            item.action();
+            onClose();
+          } else if (!hasSubmenu) {
+            onClose();
+          }
+          // 하위 메뉴가 있는 경우, 클릭해도 메뉴가 닫히지 않도록 함
+        }}
+        className={`${item.className || ''} ${hasSubmenu ? 'has-submenu' : ''}`}
+      >
+        {item.label}
+        {hasSubmenu && (
+          <div className="context-menu submenu">
+            <ul>
+              {item.submenu.map(renderMenuItem)}
+            </ul>
+          </div>
+        )}
+      </li>
+    );
+  };
+
   return (
-    <div 
+    <div
       ref={menuRef}
-      className="context-menu" 
+      className="context-menu"
       style={{ top: position.y, left: position.x }}
     >
       <ul>
-        {items.map((item, index) => (
-          // isSeparator가 true이면 구분선 렌더링
-          item.isSeparator ? (
-            <li key={`separator-${index}`} className="separator"></li>
-          ) : (
-            <li 
-              key={item.label}
-              onClick={() => {
-                if (item.action) item.action();
-                onClose(); // 메뉴 항목 클릭 후 메뉴 닫기
-              }} 
-              className={item.className || ''}
-            >
-              {item.label}
-            </li>
-          )
-        ))}
+        {items.map(renderMenuItem)}
       </ul>
     </div>
   );

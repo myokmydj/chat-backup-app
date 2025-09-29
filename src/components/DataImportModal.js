@@ -1,6 +1,6 @@
 // File: src/components/DataImportModal.js
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import SettingsModal from './SettingsModal';
 import * as XLSX from 'xlsx';
 
@@ -10,10 +10,26 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
+  // ▼▼▼ NEW: 선택된 버전을 관리할 상태 추가 ▼▼▼
+  const [selectedVersions, setSelectedVersions] = useState({ me: null, other: null });
 
   const characterNameMap = {
     me: characters?.me?.[0]?.name || 'A 캐릭터',
     other: characters?.other?.[0]?.name || 'B 캐릭터',
+  };
+  
+  // ▼▼▼ NEW: 모달이 열리거나 캐릭터 정보가 바뀔 때 선택된 버전을 초기화 ▼▼▼
+  useEffect(() => {
+    if (isOpen && characters) {
+      setSelectedVersions({
+        me: characters.me?.[0]?.id || null,
+        other: characters.other?.[0]?.id || null,
+      });
+    }
+  }, [isOpen, characters]);
+
+  const handleVersionChange = (key, versionId) => {
+    setSelectedVersions(prev => ({ ...prev, [key]: versionId }));
   };
 
   const resetState = () => {
@@ -41,20 +57,19 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
 
       if (!content) return null;
 
-      let sender, characterKey;
+      let sender, characterVersionId;
       if (speakerName === characterNameMap.me) {
         sender = 'Me';
-        characterKey = 'me';
+        // ▼▼▼ NEW: 상태에서 선택된 버전 ID 사용 ▼▼▼
+        characterVersionId = selectedVersions.me;
       } else if (speakerName === characterNameMap.other) {
         sender = 'Other';
-        characterKey = 'other';
+        // ▼▼▼ NEW: 상태에서 선택된 버전 ID 사용 ▼▼▼
+        characterVersionId = selectedVersions.other;
       } else {
         sender = 'Other';
-        characterKey = 'other';
+        characterVersionId = selectedVersions.other;
       }
-
-      const versions = characters[characterKey] || [];
-      const characterVersionId = versions.length > 0 ? versions[0].id : null;
 
       return {
         type: 'text',
@@ -184,6 +199,29 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
       setIsLoading(false);
     }
   };
+  
+  const renderImportOptions = () => (
+    <>
+      <p className="import-instruction">
+        파일의 화자 이름(`{characterNameMap.me}`, `{characterNameMap.other}`)을 아래 캐릭터에 매칭합니다. <br/>
+        각 캐릭터에 적용할 프로필 버전을 선택해주세요.
+      </p>
+      <div className="import-character-version-selectors">
+        <div className="form-group">
+            <label>{characterNameMap.me}</label>
+            <select value={selectedVersions.me || ''} onChange={(e) => handleVersionChange('me', e.target.value)} disabled={!characters.me || characters.me.length === 0}>
+                {(characters.me || []).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+        </div>
+        <div className="form-group">
+            <label>{characterNameMap.other}</label>
+            <select value={selectedVersions.other || ''} onChange={(e) => handleVersionChange('other', e.target.value)} disabled={!characters.other || characters.other.length === 0}>
+                {(characters.other || []).map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <>
@@ -193,15 +231,11 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
             <button className={sourceType === 'txt' ? 'active' : ''} onClick={() => setSourceType('txt')}>TXT 파일</button>
             <button className={sourceType === 'excel' ? 'active' : ''} onClick={() => setSourceType('excel')}>Excel 파일</button>
             <button className={sourceType === 'google' ? 'active' : ''} onClick={() => setSourceType('google')}>Google Sheets</button>
-            {/* [제거 완료] 트위터 탭 버튼이 삭제되었습니다. */}
           </div>
 
           {sourceType === 'txt' && (
             <div className="import-content form-card">
-              <p className="import-instruction">
-                `[화자명] 내용` 형식의 텍스트 파일을 선택하세요.<br/>
-                예: `[{characterNameMap.me}] 안녕하세요.`
-              </p>
+              {renderImportOptions()}
               <button className="btn-secondary" onClick={() => fileInputRef.current.click()} disabled={isLoading}>
                 TXT 파일 선택...
               </button>
@@ -211,8 +245,9 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
 
           {sourceType === 'excel' && (
             <div className="import-content form-card">
-              <p className="import-instruction">
-                첫 번째 행은 헤더(제목)입니다. A열에는 화자 이름, B열에는 내용이 있는 Excel(.xlsx) 파일을 선택하세요.
+              {renderImportOptions()}
+              <p className="import-instruction" style={{marginTop: '1rem'}}>
+                A열은 화자, B열은 내용으로 구성된 Excel 파일을 선택하세요.
               </p>
               <button className="btn-secondary" onClick={() => fileInputRef.current.click()} disabled={isLoading}>
                 Excel 파일 선택...
@@ -223,7 +258,8 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
           
           {sourceType === 'google' && (
             <div className="import-content form-card">
-              <p className="import-instruction">
+              {renderImportOptions()}
+              <p className="import-instruction" style={{marginTop: '1rem'}}>
                 1. Google 스프레드시트 우상단 **[공유]** 버튼 클릭<br/>
                 2. 일반 액세스 설정을 **'링크가 있는 모든 사용자'**로 변경<br/>
                 3. **[링크 복사]**를 눌러 나온 주소를 아래에 붙여넣으세요.
@@ -240,8 +276,6 @@ const DataImportModal = ({ isOpen, onClose, onImport, characters }) => {
               </button>
             </div>
           )}
-
-          {/* [제거 완료] 트위터 관련 UI가 모두 삭제되었습니다. */}
 
           {isLoading && <div className="import-status">데이터를 불러오는 중...</div>}
           {error && <div className="import-status error">{error}</div>}

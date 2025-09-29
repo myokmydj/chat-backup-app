@@ -1,3 +1,4 @@
+
 {
   "name": "chat-backup-app",
   "version": "0.1.0",
@@ -21,6 +22,7 @@
     "cropperjs": "^2.0.1",
     "dexie": "^4.2.0",
     "electron-is-dev": "^2.0.0",
+    "electron-updater": "^6.2.1",
     "font-list": "^2.0.1",
     "react": "^19.1.1",
     "react-cropper": "^2.3.3",
@@ -37,7 +39,8 @@
     "electron:start": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:build": "npm run build && electron-builder",
     "package:win": "npm run build && electron-builder --win",
-    "package:mac": "npm run build && electron-builder --mac"
+    "package:mac": "npm run build && electron-builder --mac",
+    "release": "npm run build && electron-builder --publish always"
   },
   "eslintConfig": {
     "extends": [
@@ -73,6 +76,11 @@
     "mac": {
       "target": "dmg",
       "identity": null
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "myokmydj",
+      "repo": "chat-backup-app"
     }
   },
   "devDependencies": {
@@ -82,4 +90,3 @@
     "wait-on": "^7.2.0"
   }
 }
-

@@ -240,6 +240,15 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
 .tag-pill { background-color: rgba(255, 255, 255, 0.2); color: #fff; padding: 0.25rem 0.6rem; border-radius: 99px; font-size: 0.75rem; }
 .card-avatars { display: none; }
 
+/* ▼▼▼ [신규] 드래그 앤 드롭 관련 스타일 ▼▼▼ */
+.conversation-card.dragging {
+  opacity: 0.4;
+  transform: scale(0.95);
+  box-shadow: none;
+  border: 2px dashed var(--global-accent-color, #5865f2);
+}
+/* ▲▲▲ */
+
 /* --- 3. 워크스페이스 --- */
 .workspace-container { 
   display: flex;
@@ -358,6 +367,69 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
 .conversation-item-tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
 .tag-pill-small { background-color: var(--input-bg); color: var(--text-muted); padding: 0.1rem 0.5rem; border-radius: 99px; font-size: 0.7rem; }
 .conversation-item.selected .tag-pill-small { background-color: rgba(255, 255, 255, 0.2); color: #fff; }
+
+/* ▼▼▼ [신규] 사이드바 폴더 및 드래그앤드롭 스타일 ▼▼▼ */
+.conversation-list-footer {
+  padding: 0.5rem 1rem 1rem;
+  border-top: 1px solid var(--border-color);
+}
+.add-folder-btn {
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  background-color: var(--input-bg);
+  color: var(--text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s, color 0.2s;
+}
+.add-folder-btn:hover {
+  background-color: var(--border-color);
+  color: var(--text-color);
+}
+.folder-item {
+  margin: 0.5rem 0;
+}
+.folder-header {
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.5rem;
+  cursor: pointer;
+  border-radius: 8px;
+}
+.folder-header:hover {
+  background-color: var(--input-bg);
+}
+.folder-toggle-icon {
+  width: 16px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+.folder-header.collapsed .folder-toggle-icon {
+  transform: rotate(-90deg);
+}
+.folder-name {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-left: 0.25rem;
+  flex-grow: 1;
+}
+.folder-content {
+  padding-left: 1rem;
+}
+.conversation-list .dragging {
+  opacity: 0.4;
+  background-color: var(--border-color);
+}
+.folder-header.drag-over {
+  background-color: var(--global-accent-color) !important;
+  opacity: 0.2;
+}
+/* ▲▲▲ */
+
 
 /* --- 5. 채팅창 --- */
 /* [신규] 스티커와 메시지 리스트를 감싸는 컨테이너 */
@@ -528,12 +600,32 @@ input, button, textarea, select { font-family: inherit; font-size: 0.9rem; color
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); padding: 0.4rem 0; min-width: 160px; border: 1px solid rgba(0,0,0,0.05);
 }
 .context-menu ul { list-style: none; padding: 0; margin: 0; }
-.context-menu li { padding: 0.6rem 1rem; cursor: pointer; color: #212529; font-size: 0.9rem; transition: background-color 0.1s; } /* [수정] 텍스트 색상 고정 */
+.context-menu li { padding: 0.6rem 1rem; cursor: pointer; color: #212529; font-size: 0.9rem; transition: background-color 0.1s; position: relative; } /* [수정] 텍스트 색상 고정 */
 .context-menu li:hover { background-color: var(--input-bg); }
 .context-menu li.delete { color: #e53e3e; }
 .context-menu li.delete:hover { background-color: #e53e3e; color: white; }
 .context-menu li.separator { height: 1px; background-color: var(--border-color); margin: 0.4rem 0; padding: 0; } /* [수정] 변수 적용 */
 .context-menu li.separator:hover { background-color: var(--border-color); } /* [수정] 변수 적용 */
+/* ▼▼▼ [신규] 하위 메뉴 스타일 ▼▼▼ */
+.context-menu .submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -5px; /* 부모 li의 padding 상쇄 */
+}
+.context-menu li:hover > .submenu {
+  display: block;
+}
+.context-menu li.has-submenu::after {
+  content: '▶';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #aaa;
+}
+/* ▲▲▲ */
 
 /* --- 9. 이미지 크롭 모달 --- */
 .modal-content.image-crop-modal-content { max-width: 800px; }
@@ -1883,6 +1975,32 @@ input[type="range"]:active::-moz-range-thumb {
   margin: 0;
 }
 
+/* ▼▼▼ [신규] 불러오기 모달의 캐릭터 버전 선택 UI ▼▼▼ */
+.import-character-version-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.import-character-version-selectors .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.import-character-version-selectors label {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.import-character-version-selectors select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #fff;
+}
+/* ▲▲▲ */
+
+
 .import-status {
   margin-top: 1rem;
   text-align: center;
@@ -1917,4 +2035,31 @@ input[type="range"]:active::-moz-range-thumb {
   outline: none;
   border-color: var(--global-accent-color, #5865f2);
   box-shadow: 0 0 0 2px var(--global-accent-color, #5865f2)33;
+}
+
+/* 컨텍스트 메뉴 하위 메뉴 스타일 */
+.context-menu li.has-submenu {
+  position: relative;
+}
+
+.context-menu li.has-submenu::after {
+  content: '▶';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.context-menu li .submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -5px; /* 부모 li의 padding 값에 맞춰 조정 */
+  z-index: 1002;
+}
+
+.context-menu li:hover > .submenu {
+  display: block;
 }
