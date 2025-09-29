@@ -22,15 +22,22 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18 # 사용하시는 Node.js 버전
-          cache: 'npm' # ▼▼▼ [추가] npm 캐시 설정으로 설치 속도 향상
+          node-version: 18
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci # ▼▼▼ [수정] npm install 대신 npm ci 사용 (CI 환경에 더 적합)
+        run: npm ci
 
-      - name: Build and release application
+      # ▼▼▼ [핵심 수정 1] React 앱 빌드 단계를 분리 ▼▼▼
+      - name: Build React App
         env:
-          # ▼▼▼ [핵심 수정] Node.js 힙 메모리 크기를 4GB로 늘려 메모리 부족 문제 해결
-          NODE_OPTIONS: "--max-old-space-size=4096"
+          NODE_OPTIONS: "--max-old-space-size=4096" # 빌드 시에도 메모리 할당
+          CI: true # 경고를 오류로 처리하도록 명시 (기본값이지만 확실히 함)
+        run: npm run build
+
+      # ▼▼▼ [핵심 수정 2] Electron 패키징 및 릴리즈 단계를 분리 ▼▼▼
+      - name: Package and Release Application
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096" # 패키징 시에도 메모리 할당
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run release
+        run: electron-builder --publish always
