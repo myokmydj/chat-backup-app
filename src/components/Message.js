@@ -54,8 +54,9 @@ const Message = ({ message, characters, versionId, onContextMenu, onAvatarClick 
           e.preventDefault();
           window.open(url, '_blank', 'noopener,noreferrer');
         };
+        // ▼▼▼ [핵심 수정] a 태그에 onContextMenu 핸들러를 추가하여 우클릭 이벤트를 정상적으로 처리합니다. ▼▼▼
         return (
-          <a href={url} onClick={handleOpenLink} className="link-preview-card" target="_blank" rel="noopener noreferrer">
+          <a href={url} onClick={handleOpenLink} className="link-preview-card" target="_blank" rel="noopener noreferrer" onContextMenu={handleContextMenu}>
             {image && <img src={image} alt={title} className="link-preview-image" />}
             <div className="link-preview-content">
               <div className="link-preview-title">{title}</div>

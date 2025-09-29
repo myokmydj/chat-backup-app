@@ -3,6 +3,11 @@
 {
   "name": "chat-backup-app",
   "version": "0.1.0",
+  "description": "A backup application for chat logs.",
+  "author": {
+    "name": "myokmydj",
+    "email": "your_email@example.com"
+  },
   "main": "public/electron.js",
   "homepage": "./",
   "private": true,
@@ -73,8 +78,7 @@
       "target": "nsis"
     },
     "mac": {
-      "target": "dmg",
-      "identity": null
+      "target": "dmg"
     }
   },
   "devDependencies": {
@@ -84,7 +88,6 @@
     "wait-on": "^7.2.0"
   }
 }
-
 
 
 // ======================================================
@@ -6744,24 +6747,21 @@ const getInitialState = (key, defaultValue) => {
   }
 };
 
+// ▼▼▼ [핵심 수정] 사용하지 않는 needsUpdate 변수 관련 로직 제거 ▼▼▼
 const migrateDataStructure = (pairs) => {
   if (!Array.isArray(pairs)) return [];
   return pairs.map(pair => {
-    let needsUpdate = false;
     if (!pair.hasOwnProperty('folders')) {
       pair.folders = [];
-      needsUpdate = true;
     }
     if (Array.isArray(pair.conversations)) {
       pair.conversations = pair.conversations.map((convo, index) => {
         const updatedConvo = { ...convo };
         if (!convo.hasOwnProperty('order')) {
           updatedConvo.order = index;
-          needsUpdate = true;
         }
         if (!convo.hasOwnProperty('folderId')) {
           updatedConvo.folderId = null;
-          needsUpdate = true;
         }
         return updatedConvo;
       });
@@ -7172,7 +7172,7 @@ function App() {
       />
       <div className="app-container-root" style={{ paddingTop: '32px' }}>
         {currentView === 'dashboard' ? (
-          <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(false)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} onReorder={handleReorderPairs} />
+          <Dashboard logs={Array.isArray(characterPairs) ? characterPairs : []} onSelectLog={handleSelectPair} onOpenAddLogModal={() => setIsAddPairModalOpen(true)} bgColor={globalTheme.dashboardBg} onContextMenu={handleDashboardContextMenu} onReorder={handleReorderPairs} />
         ) : (
           selectedPair && (
             <Workspace

@@ -2063,3 +2063,23 @@ input[type="range"]:active::-moz-range-thumb {
 .context-menu li:hover > .submenu {
   display: block;
 }
+
+/* ▼▼▼ [핵심 수정] 임베드 메시지 우클릭 문제 해결을 위한 스타일 추가 ▼▼▼ */
+/* --- 29. 임베드 메시지 컨텍스트 메뉴 수정 --- */
+
+/* :has()를 사용하여 embed-container를 포함하는 미디어 버블에만 스타일 적용 */
+.message-bubble.media:has(.embed-container) {
+  padding: 5px; /* iframe 주변에 우클릭 가능한 영역 확보 */
+  background-color: var(--bubble-other-bg);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* '나'의 임베드 메시지 버블 배경색 */
+.message-bubble.me.media:has(.embed-container) {
+  background-color: var(--bubble-me-bg);
+}
+
+/* 내부 embed-container의 모서리를 살짝 둥글게 처리하여 패딩과 어울리게 함 */
+.message-bubble.media:has(.embed-container) .embed-container {
+  border-radius: 12px;
+}
