@@ -1,6 +1,6 @@
 {
   "name": "chat-backup-app",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "A backup application for chat logs.",
   "author": {
     "name": "myokmydj",
@@ -86,21 +86,21 @@
     },
     "mac": {
       "target": "dmg",
-      "identity": null,
-      "dmg": {
-        "contents": [
-          {
-            "x": 130,
-            "y": 220
-          },
-          {
-            "x": 410,
-            "y": 220,
-            "type": "link",
-            "path": "/Applications"
-          }
-        ]
-      }
+      "identity": null
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     },
     "publish": {
       "provider": "github",
