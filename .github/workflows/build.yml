@@ -1,10 +1,8 @@
-# File: .github/workflows/build.yml
-
-name: Build Application
+name: Build Electron App
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -12,29 +10,35 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [windows-latest, macos-latest]
 
     steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v3
+      - name: Check out git repository
+        uses: actions/checkout@v4 # v3 -> v4로 변경
 
       - name: Install Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # v3 -> v4로 변경
         with:
-          node-version: 20
+          node-version: '18'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Build React App
-        run: npm run build
+      - name: Build and Package for Windows
+        if: runner.os == 'Windows' # 이 작업은 Windows Runner에서만 실행
+        run: npm run package:win
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Package Application
-        run: npx electron-builder
-        
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4 # ▼▼▼ [핵심 수정] v3에서 v4로 버전 업그레이드
+      - name: Build and Package for macOS
+        if: runner.os == 'macOS' # 이 작업은 macOS Runner에서만 실행
+        run: npm run package:mac
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4 # v3 -> v4로 변경 (가장 중요한 수정)
         with:
           name: ${{ matrix.os }}-build
           path: dist
